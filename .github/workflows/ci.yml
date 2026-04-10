@@ -1,32 +1,41 @@
 name: CI
 
 on:
-push:
-branches: ["main"]
-pull_request:
-branches: ["main"]
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
 
 jobs:
-build:
-runs-on: ubuntu-latest
+  build:
+    runs-on: ubuntu-latest
 
-```
-steps:
-  - name: Checkout code
-    uses: actions/checkout@v4
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-  - name: Setup Node.js
-    uses: actions/setup-node@v4
-    with:
-      node-version: 18
-      cache: 'npm'
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
 
-  - name: Install dependencies
-    run: npm install
+      - name: Install dependencies
+        run: |
+          cd Project/Phone-marketplace
+          npm install
 
-  - name: Run lint
-    run: npm run lint
+      - name: Generate Prisma Client
+        run: |
+          cd Project/Phone-marketplace
+          npx prisma generate
 
-  - name: Build project
-    run: npm run build
-```
+      - name: Run lint
+        run: |
+          cd Project/Phone-marketplace
+          npm run lint
+
+      - name: Build project
+        run: |
+          cd Project/Phone-marketplace
+          npm run build
