@@ -29,6 +29,11 @@ jobs:
           cd Phone-marketplace
           npx prisma generate
 
+      - name: Set environment variables
+        run: |
+          cd Phone-marketplace
+          echo "DATABASE_URL=postgresql://dummy:dummy@localhost:5432/dummy" >> $GITHUB_ENV
+
       - name: Run lint
         run: |
           cd Phone-marketplace
