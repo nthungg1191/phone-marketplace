@@ -21,20 +21,20 @@ jobs:
 
       - name: Install dependencies
         run: |
-          cd Project/Phone-marketplace
+          cd Phone-marketplace
           npm install
 
       - name: Generate Prisma Client
         run: |
-          cd Project/Phone-marketplace
+          cd Phone-marketplace
           npx prisma generate
 
       - name: Run lint
         run: |
-          cd Project/Phone-marketplace
+          cd Phone-marketplace
           npm run lint
 
       - name: Build project
         run: |
-          cd Project/Phone-marketplace
+          cd Phone-marketplace
           npm run build
