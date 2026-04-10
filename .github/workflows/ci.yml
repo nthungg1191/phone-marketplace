@@ -10,7 +10,6 @@ jobs:
 build:
 runs-on: ubuntu-latest
 
-```
 steps:
   - name: Checkout code
     uses: actions/checkout@v4
@@ -27,5 +26,4 @@ steps:
     run: npm run lint
 
   - name: Build project
-    run: npm run build
-```
+    run: npm run build```
