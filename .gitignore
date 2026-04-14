@@ -3,6 +3,5 @@
 /.augment
 
 
-
-.skills-lock.json
-.gitignore
+#Skills Lock File
+!skills-lock.json
