@@ -1,32 +1,33 @@
-import { DefaultSession, DefaultUser } from "next-auth"
-import { DefaultJWT } from "next-auth/jwt"
+import "next-auth"
+import "next-auth/jwt"
+import type { UserRole, SellerStatus, SellerRank } from "@prisma/client"
 
 declare module "next-auth" {
+  interface User {
+    id: string
+    role: UserRole
+    sellerStatus: SellerStatus
+    sellerRank: SellerRank
+  }
+
   interface Session {
     user: {
       id: string
-      role: string
-      sellerStatus: string
-      sellerRank: string
-    } & DefaultSession["user"]
-  }
-
-  interface User extends DefaultUser {
-    role: string
-    sellerStatus: string
-    sellerRank: string
+      email: string
+      name: string
+      image?: string | null
+      role: UserRole
+      sellerStatus: SellerStatus
+      sellerRank: SellerRank
+    }
   }
 }
 
 declare module "next-auth/jwt" {
   interface JWT {
     id: string
-    role: string
-    sellerStatus: string
-    sellerRank: string
-    name?: string | null
-    email?: string | null
-    picture?: string | null
-    sub?: string
+    role: UserRole
+    sellerStatus: SellerStatus
+    sellerRank: SellerRank
   }
 }
