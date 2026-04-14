@@ -1,3 +1,8 @@
 /.agents
 /.claude
 /.augment
+
+
+
+.skills-lock.json
+.gitignore
