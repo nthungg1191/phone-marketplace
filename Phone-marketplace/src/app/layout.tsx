@@ -7,7 +7,7 @@ import { Footer } from "@/components/shared/footer"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
-  subsets: ["latin", "vietnamese"],
+  subsets: ["latin", "cyrillic"],
 })
 
 const geistMono = Geist_Mono({
