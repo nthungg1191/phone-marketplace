@@ -5,6 +5,7 @@ import Google from "next-auth/providers/google"
 import bcrypt from "bcryptjs"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
+import type { UserRole, SellerStatus, SellerRank } from "@prisma/client"
 
 // Validation schema
 const credentialsSchema = z.object({
@@ -83,6 +84,11 @@ export const authConfig: NextAuthConfig = {
         })
 
         if (existingUser) {
+          // Check if account is locked
+          if (existingUser.isLocked) {
+            throw new Error("Tài khoản đã bị khóa")
+          }
+
           // Update user info from Google
           await prisma.user.update({
             where: { email },
@@ -115,7 +121,6 @@ export const authConfig: NextAuthConfig = {
 
     async jwt({ token, user, trigger, session }) {
       if (user) {
-        // Cast user to our extended type
         const extUser = user as {
           id: string
           role: string
@@ -123,18 +128,18 @@ export const authConfig: NextAuthConfig = {
           sellerRank: string
         }
         token.id = extUser.id
-        token.role = extUser.role
-        token.sellerStatus = extUser.sellerStatus
-        token.sellerRank = extUser.sellerRank
+        if (extUser.role) token.role = extUser.role as UserRole
+        if (extUser.sellerStatus) token.sellerStatus = extUser.sellerStatus as SellerStatus
+        if (extUser.sellerRank) token.sellerRank = extUser.sellerRank as SellerRank
       }
 
       // Handle session update
       if (trigger === "update" && session) {
         token.name = session.name
         token.email = session.email
-        token.role = session.role
-        token.sellerStatus = session.sellerStatus
-        token.sellerRank = session.sellerRank
+        token.role = session.role as UserRole
+        token.sellerStatus = session.sellerStatus as SellerStatus
+        token.sellerRank = session.sellerRank as SellerRank
         token.picture = session.avatar
       }
 
@@ -143,10 +148,10 @@ export const authConfig: NextAuthConfig = {
 
     async session({ session, token }) {
       if (token && session.user) {
-        session.user.id = token.id as string
-        session.user.role = token.role as string
-        session.user.sellerStatus = token.sellerStatus as string
-        session.user.sellerRank = token.sellerRank as string
+        if (token.id) session.user.id = token.id as string
+        if (token.role) session.user.role = token.role as UserRole
+        if (token.sellerStatus) session.user.sellerStatus = token.sellerStatus as SellerStatus
+        if (token.sellerRank) session.user.sellerRank = token.sellerRank as SellerRank
       }
 
       return session

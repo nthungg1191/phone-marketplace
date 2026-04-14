@@ -160,16 +160,16 @@ export function Header() {
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                   className="flex items-center gap-2 p-1 rounded-full hover:bg-muted transition-colors"
                 >
-                  {user.image ? (
+                  {user?.image ? (
                     <img
-                      src={user.image}
-                      alt={user.name || "Avatar"}
+                      src={user?.image}
+                      alt={user?.name || "Avatar"}
                       className="h-8 w-8 rounded-full object-cover"
                     />
                   ) : (
                     <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
                       <span className="text-sm font-medium text-primary-foreground">
-                        {user.name?.charAt(0).toUpperCase()}
+                        {user?.name?.charAt(0).toUpperCase()}
                       </span>
                     </div>
                   )}
@@ -177,11 +177,11 @@ export function Header() {
                 {isUserMenuOpen && (
                   <div className="absolute right-0 top-full mt-2 w-56 bg-background border rounded-lg shadow-lg py-1">
                     <div className="px-4 py-2 border-b">
-                      <p className="font-medium text-sm">{user.name}</p>
-                      <p className="text-xs text-muted-foreground">{user.email}</p>
-                      {user.role !== "BUYER" && (
+                      <p className="font-medium text-sm">{user?.name}</p>
+                      <p className="text-xs text-muted-foreground">{user?.email}</p>
+                      {user?.role !== "BUYER" && (
                         <span className="inline-block mt-1 px-2 py-0.5 text-xs bg-primary/10 text-primary rounded-full capitalize">
-                          {user.role}
+                          {user?.role}
                         </span>
                       )}
                     </div>
@@ -199,7 +199,7 @@ export function Header() {
                       <Heart className="h-4 w-4" />
                       Yêu thích
                     </Link>
-                    {user.role === "BUYER" && (
+                    {user?.role === "BUYER" && (
                       <Link
                         href="/seller/register"
                         className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-muted"
