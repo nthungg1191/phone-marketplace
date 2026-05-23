@@ -7,7 +7,6 @@ import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import type { UserRole, SellerStatus, SellerRank } from "@prisma/client"
 
-// Validation schema
 const credentialsSchema = z.object({
   email: z.string().email("Email không hợp lệ"),
   password: z.string().min(6, "Mật khẩu phải có ít nhất 6 ký tự"),
@@ -15,13 +14,10 @@ const credentialsSchema = z.object({
 
 export const authConfig: NextAuthConfig = {
   providers: [
-    // Google OAuth
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID ?? "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
     }),
-
-    // Credentials (Email/Password)
     Credentials({
       name: "credentials",
       credentials: {
@@ -29,43 +25,27 @@ export const authConfig: NextAuthConfig = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        try {
-          const parsed = credentialsSchema.parse(credentials)
+        const parsed = credentialsSchema.parse(credentials)
+        const user = await prisma.user.findUnique({
+          where: { email: parsed.email },
+        })
 
-          const user = await prisma.user.findUnique({
-            where: { email: parsed.email },
-          })
+        if (!user || !user.password) return null
 
-          if (!user || !user.password) {
-            return null
-          }
+        const isValid = await bcrypt.compare(parsed.password, user.password)
+        if (!isValid) return null
 
-          const isValid = await bcrypt.compare(parsed.password, user.password)
-
-          if (!isValid) {
-            return null
-          }
-
-          if (user.isLocked) {
-            throw new Error("Tài khoản đã bị khóa")
-          }
-
-          return {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            role: user.role,
-            sellerStatus: user.sellerStatus,
-            sellerRank: user.sellerRank,
-            image: user.avatar,
-          }
-        } catch (error) {
-          if (error instanceof z.ZodError) {
-            // Zod v4
-            const issues = (error as { issues?: Array<{ message?: string }> }).issues
-            throw new Error(issues?.[0]?.message || "Dữ liệu không hợp lệ")
-          }
-          throw error
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          sellerStatus: user.sellerStatus,
+          sellerRank: user.sellerRank,
+          image: user.avatar,
+          isLocked: user.isLocked,
+          lockedReason: user.lockedReason,
+          lockedAt: user.lockedAt?.toISOString(),
         }
       },
     }),
@@ -73,23 +53,24 @@ export const authConfig: NextAuthConfig = {
 
   callbacks: {
     async signIn({ user, account, profile }) {
-      // Handle Google OAuth sign in
+      if (account?.provider === "credentials" && user) {
+        const extUser = user as {
+          isLocked?: boolean
+        }
+        if (extUser.isLocked) return false
+      }
+
       if (account?.provider === "google" && profile) {
         const email = profile.email
         if (!email) return false
 
-        // Check if user exists
-        const existingUser = await prisma.user.findUnique({
-          where: { email },
-        })
+        const existingUser = await prisma.user.findUnique({ where: { email } })
 
         if (existingUser) {
-          // Check if account is locked
+          // Check if user is locked
           if (existingUser.isLocked) {
-            throw new Error("Tài khoản đã bị khóa")
+            throw new Error(`LOCKED:${existingUser.lockedReason || "Tài khoản đã bị khóa"}:${existingUser.lockedAt?.toISOString() || ""}`)
           }
-
-          // Update user info from Google
           await prisma.user.update({
             where: { email },
             data: {
@@ -101,7 +82,6 @@ export const authConfig: NextAuthConfig = {
           })
           user.id = existingUser.id
         } else {
-          // Create new user
           const newUser = await prisma.user.create({
             data: {
               email,
@@ -115,7 +95,6 @@ export const authConfig: NextAuthConfig = {
           user.id = newUser.id
         }
       }
-
       return true
     },
 
@@ -126,14 +105,32 @@ export const authConfig: NextAuthConfig = {
           role: string
           sellerStatus: string
           sellerRank: string
+          isLocked?: boolean
+          lockedReason?: string | null
+          lockedAt?: string | null
         }
         token.id = extUser.id
-        if (extUser.role) token.role = extUser.role as UserRole
-        if (extUser.sellerStatus) token.sellerStatus = extUser.sellerStatus as SellerStatus
-        if (extUser.sellerRank) token.sellerRank = extUser.sellerRank as SellerRank
+        token.role = extUser.role as UserRole
+        token.sellerStatus = extUser.sellerStatus as SellerStatus
+        token.sellerRank = extUser.sellerRank as SellerRank
+        token.isLocked = extUser.isLocked || false
+        token.lockedReason = extUser.lockedReason || null
+        token.lockedAt = extUser.lockedAt || null
       }
 
-      // Handle session update
+      // Check for lock status update on every JWT refresh
+      if (token.id) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { isLocked: true, lockedReason: true, lockedAt: true },
+        })
+        if (dbUser) {
+          token.isLocked = dbUser.isLocked
+          token.lockedReason = dbUser.lockedReason
+          token.lockedAt = dbUser.lockedAt?.toISOString() || null
+        }
+      }
+
       if (trigger === "update" && session) {
         token.name = session.name
         token.email = session.email
@@ -142,18 +139,20 @@ export const authConfig: NextAuthConfig = {
         token.sellerRank = session.sellerRank as SellerRank
         token.picture = session.avatar
       }
-
       return token
     },
 
     async session({ session, token }) {
       if (token && session.user) {
-        if (token.id) session.user.id = token.id as string
-        if (token.role) session.user.role = token.role as UserRole
-        if (token.sellerStatus) session.user.sellerStatus = token.sellerStatus as SellerStatus
-        if (token.sellerRank) session.user.sellerRank = token.sellerRank as SellerRank
+        session.user.id = token.id as string
+        session.user.role = token.role as UserRole
+        session.user.sellerStatus = token.sellerStatus as SellerStatus
+        session.user.sellerRank = token.sellerRank as SellerRank
+        // Add lock info to session
+        session.user.isLocked = token.isLocked as boolean
+        session.user.lockedReason = token.lockedReason as string | null
+        session.user.lockedAt = token.lockedAt as string | null
       }
-
       return session
     },
   },
@@ -161,16 +160,14 @@ export const authConfig: NextAuthConfig = {
   pages: {
     signIn: "/auth/login",
     error: "/auth/error",
-    newUser: "/auth/register",
   },
 
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: 30 * 24 * 60 * 60,
   },
 
   secret: process.env.AUTH_SECRET,
-
   trustHost: true,
 }
 

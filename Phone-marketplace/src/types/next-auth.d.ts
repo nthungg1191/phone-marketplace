@@ -8,6 +8,9 @@ declare module "next-auth" {
     role: UserRole
     sellerStatus: SellerStatus
     sellerRank: SellerRank
+    isLocked?: boolean
+    lockedReason?: string | null
+    lockedAt?: string | null
   }
 
   interface Session {
@@ -19,6 +22,9 @@ declare module "next-auth" {
       role: UserRole
       sellerStatus: SellerStatus
       sellerRank: SellerRank
+      isLocked: boolean
+      lockedReason: string | null
+      lockedAt: string | null
     }
   }
 }
@@ -29,5 +35,8 @@ declare module "next-auth/jwt" {
     role: UserRole
     sellerStatus: SellerStatus
     sellerRank: SellerRank
+    isLocked: boolean
+    lockedReason: string | null
+    lockedAt: string | null
   }
 }

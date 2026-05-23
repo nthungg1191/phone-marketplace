@@ -44,11 +44,17 @@ enum ProductStatus {
 }
 
 enum ProductCondition {
-  LIKE_NEW
-  EXCELLENT
-  GOOD
-  FAIR
-  POOR
+  LIKE_NEW    // Như mới (99-100%)
+  PERFECT_99  // 99% - Mới chưa sử dụng
+  EXCELLENT_98 // 98% - Như mới
+  EXCELLENT_97 // 97% - Rất đẹp
+  GOOD         // < 97% - Đẹp thường dùng
+}
+
+enum WarrantyType {
+  WITH_WARRANTY      // Còn bảo hành
+  OUT_OF_WARRANTY    // Hết bảo hành
+  SELLER_WARRANTY    // Bảo hành từ người bán
 }
 
 enum OrderStatus {
@@ -57,6 +63,13 @@ enum OrderStatus {
   CONFIRMED
   SHIPPING
   DELIVERED
+  RECEIVED        // Buyer đã nhận và kiểm tra hàng, bắt đầu return period
+  RETURN_PERIOD     // Đang trong thời gian dùng thử (14 ngày)
+  RETURN_PENDING   // Buyer yêu cầu trả hàng, chờ Seller duyệt
+  RETURN_APPROVED  // Seller đồng ý, chờ Admin duyệt hoàn tiền
+  RETURN_REJECTED  // Seller từ chối yêu cầu trả hàng
+  FRAUD_BUYER      // Gian lận phía Buyer (tráo hàng)
+  FRAUD_SELLER     // Gian lận phía Seller (giao không đúng)
   COMPLETED
   CANCELLED
   REFUNDED
@@ -72,6 +85,24 @@ enum PaymentStatus {
   SUCCESS
   FAILED
   REFUNDED
+}
+
+enum ReturnRequestStatus {
+  PENDING        // Chờ Seller duyệt
+  SELLER_APPROVED // Seller đồng ý, chờ Admin duyệt
+  SELLER_REJECTED  // Seller từ chối
+  ADMIN_APPROVED   // Admin duyệt hoàn tiền → REFUNDED
+  ADMIN_REJECTED    // Admin từ chối hoàn tiền
+  CANCELLED        // Buyer hủy yêu cầu
+}
+
+enum ReturnReason {
+  WRONG_ITEM           // Giao sai sản phẩm
+  DAMAGED              // Sản phẩm bị hư hỏng
+  NOT_AS_DESCRIBED    // Không đúng như mô tả
+  FAKE_PRODUCT        // Sản phẩm giả/hàng nhái
+  CHANGED_MIND        // Đổi ý (không bắt buộc chấp nhận)
+  OTHER               // Lý do khác
 }
 
 enum OfferStatus {
@@ -97,6 +128,16 @@ enum MessageType {
 enum NotificationType {
   ORDER_CREATED
   ORDER_UPDATED
+  ORDER_PAID
+  ORDER_DELIVERED
+  ORDER_RETURN_PERIOD_STARTED  // Bắt đầu 14 ngày dùng thử
+  ORDER_RETURN_PERIOD_REMINDER // Nhắc nhở sắp hết hạn return
+  ORDER_RETURN_REQUESTED       // Buyer yêu cầu trả hàng
+  ORDER_RETURN_APPROVED_BY_SELLER // Seller đồng ý trả hàng
+  ORDER_RETURN_REJECTED_BY_SELLER // Seller từ chối trả hàng
+  ORDER_REFUND_APPROVED        // Admin duyệt hoàn tiền
+  ORDER_REFUND_REJECTED        // Admin từ chối hoàn tiền
+  ORDER_FRAUD_DETECTED        // Phát hiện gian lận
   OFFER_RECEIVED
   OFFER_RESPONSE
   MESSAGE_NEW
@@ -105,12 +146,45 @@ enum NotificationType {
   SELLER_APPROVED
   SELLER_REJECTED
   TRUST_SCORE_UPDATED
+  REVIEW_RECEIVED
 }
 
 enum HealthCheckStatus {
   PASS
   FAIL
   NOT_TESTED
+}
+
+// ============================================================
+// OAUTH ACCOUNTS & EMAIL VERIFICATION
+// ============================================================
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at       Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
 }
 
 // ============================================================
@@ -127,16 +201,19 @@ model User {
   role            UserRole  @default(BUYER)
   isVerified      Boolean   @default(false)
   isLocked        Boolean   @default(false)
+  lockedAt        DateTime?  // Thời gian bị khóa
+  lockedReason    String?    // Lý do khóa
+  lockedBy        String?    // Admin đã khóa
   emailVerifiedAt DateTime?
-  
+
   sellerStatus    SellerStatus @default(NONE)
   sellerRequestAt DateTime?
   sellerApprovedAt DateTime?
   sellerRejectedReason String?
-  
+
   sellerRank      SellerRank @default(NEW)
   sellerStats     SellerStats?
-  
+
   addresses       Address[]
   products        Product[]
   ordersAsBuyer   Order[]   @relation("BuyerOrders")
@@ -148,10 +225,14 @@ model User {
   notifications   Notification[]
   conversations   ConversationParticipant[]
   trustScoreHistory TrustScoreHistory[]
-  
+  wishlistItems   Wishlist[]
+
+  // OAuth accounts
+  accounts        Account[]
+
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
-  
+
   @@index([email])
   @@index([role])
   @@index([sellerStatus])
@@ -182,18 +263,29 @@ model Address {
   id          String   @id @default(cuid())
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   fullName    String
   phone       String
   street      String
-  ward        String
-  district    String
-  city        String
+
+  // Cau truc dia chi moi (sau 07/2025 - bo qua cap quan/huyen)
+  provinceCode String  // Ma tinh (VD: "01")
+  provinceName String  // Ten tinh (VD: "Thanh pho Ha Noi")
+  wardCode     String  // Ma phuong/xa (VD: "00070")
+  wardName     String  // Ten phuong/xa (VD: "Phuong Hoan Kiem")
+
+  // Cau truc cu (de hien thi dia chi day du + chuyen doi neu can)
+  district    String   @default("")
+  city        String   @default("")
+
+  // Cac truong du phong cho tich hop voi he thong cu
+  // Khi nhap dia chi cu, co the lay district/city tu truong ward
+
   isDefault   Boolean  @default(false)
-  
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
+
   @@index([userId])
 }
 
@@ -201,13 +293,27 @@ model TrustScoreHistory {
   id          String      @id @default(cuid())
   userId      String
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   score       Decimal     @db.Decimal(3, 2)
   rank        SellerRank
   reason      String
-  
+
   createdAt   DateTime    @default(now())
-  
+
+  @@index([userId])
+}
+
+model Wishlist {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, productId])
   @@index([userId])
 }
 
@@ -290,11 +396,13 @@ model Product {
   description     String?
   
   condition       ProductCondition
+  warranty        WarrantyType     @default(OUT_OF_WARRANTY)
   ramGb           Int
   storageGb       Int
   color           String
   imei            String?
   batteryHealth   Int
+  stock          Int?            // Số lượng trong kho, null = không giới hạn
   
   price           Decimal         @db.Decimal(15, 2)
   negotiable      Boolean         @default(true)
@@ -311,6 +419,8 @@ model Product {
   orderItems      OrderItem[]
   offers          Offer[]
   reviews         Review[]
+  conversations   Conversation[]
+  wishlistItems   Wishlist[]
   
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
@@ -343,45 +453,43 @@ model HealthCheck {
   id                  String   @id @default(cuid())
   productId           String   @unique
   product             Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  
+
+  // === Device Info ===
+  serialNumber        String?
+  wifiMacAddress      String?
+  bluetoothMacAddress String?
+
+  // === OS Version ===
+  iosVersion          String?
+  androidVersion      String?
+
+  // === Software Check ===
+  activationStatus    String?  // Trạng thái kích hoạt (Active/Inactive)
+  jailbreakStatus     String?  // Trạng thái JB (iPhone) / Root (Android)
+  securityLockStatus  String?  // iCloud Lock (iPhone) / FRP (Android)
+
+  // === Battery ===
+  batteryHealth       Int
+  batteryCycleCount   Int?
+
+  // === Components ===
   screen              HealthCheckStatus @default(NOT_TESTED)
-  screenNote          String?
-  
   cameraFront         HealthCheckStatus @default(NOT_TESTED)
-  cameraFrontNote     String?
-  
   cameraBack          HealthCheckStatus @default(NOT_TESTED)
-  cameraBackNote      String?
-  
   speaker             HealthCheckStatus @default(NOT_TESTED)
-  speakerNote         String?
-  
   microphone          HealthCheckStatus @default(NOT_TESTED)
-  microphoneNote      String?
-  
-  buttons             HealthCheckStatus @default(NOT_TESTED)
-  buttonsNote         String?
-  
-  faceId              HealthCheckStatus @default(NOT_TESTED)
-  faceIdNote          String?
-  
-  fingerprint         HealthCheckStatus @default(NOT_TESTED)
-  fingerprintNote     String?
-  
   wifi                HealthCheckStatus @default(NOT_TESTED)
-  wifiNote            String?
-  
   bluetooth           HealthCheckStatus @default(NOT_TESTED)
-  bluetoothNote       String?
-  
+  fingerprint         HealthCheckStatus @default(NOT_TESTED)
+  faceId              HealthCheckStatus @default(NOT_TESTED)
   chargingPort        HealthCheckStatus @default(NOT_TESTED)
-  chargingPortNote    String?
-  
+
+  // === Summary ===
   overallStatus       String?
   notes               String?
-  
+
   createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  updatedAt          DateTime @updatedAt
 }
 
 // ============================================================
@@ -392,27 +500,31 @@ model Offer {
   id              String          @id @default(cuid())
   productId       String
   product         Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
-  
+
   buyerId         String
   buyer           User            @relation(fields: [buyerId], references: [id])
-  
+
   offeredPrice    Decimal         @db.Decimal(15, 2)
+  finalPrice      Decimal?        @db.Decimal(15, 2)  // Giá deal cuối cùng khi chốt
   message         String?
   type            NegotiationType @default(OFFER)
-  
+
   status          OfferStatus     @default(PENDING)
   responseMessage String?
   respondedAt     DateTime?
-  
+
   parentOfferId   String?
   parentOffer     Offer?          @relation("OfferChain", fields: [parentOfferId], references: [id])
   counterOffers   Offer[]         @relation("OfferChain")
-  
+
+  // Cart items that used this offer
+  cartItems       CartItem[]
+
   expiresAt       DateTime
-  
+
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
-  
+
   @@index([productId])
   @@index([buyerId])
   @@index([status])
@@ -436,12 +548,16 @@ model CartItem {
   id          String   @id @default(cuid())
   cartId      String
   cart        Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
-  
+
   productId   String
   product     Product  @relation(fields: [productId], references: [id])
-  
+
+  quantity    Int      @default(1)
+  price       Decimal? @db.Decimal(15, 2)  // Giá đã deal (nếu có)
+  offerId     String?                   // Offer đã chốt deal
+  offer       Offer?   @relation(fields: [offerId], references: [id])
   addedAt     DateTime @default(now())
-  
+
   @@unique([cartId, productId])
   @@index([cartId])
 }
@@ -470,6 +586,7 @@ model Order {
   paymentStatus   PaymentStatus @default(PENDING)
   paymentId       String?
   paidAt          DateTime?
+  paymentDeadline DateTime?    // Thời hạn thanh toán (mặc định 30 phút)
   
   buyerConfirmed      Boolean     @default(false)
   buyerConfirmedAt   DateTime?
@@ -483,7 +600,14 @@ model Order {
   
   refundedAt      DateTime?
   refundReason    String?
-  
+
+  // === RETURN PERIOD TRACKING ===
+  returnPeriodStartedAt DateTime?  // Thời điểm bắt đầu RETURN_PERIOD (sau DELIVERED)
+  returnPeriodEndsAt    DateTime?  // Thời điểm kết thúc (returnPeriodStartedAt + 14 ngày)
+
+  // === RETURN REQUEST ===
+  returnRequest    ReturnRequest?
+
   notes           String?
   
   reviews         Review[]
@@ -546,25 +670,76 @@ model PaymentTransaction {
 }
 
 // ============================================================
+// RETURN REQUEST
+// ============================================================
+
+model ReturnRequest {
+  id              String              @id @default(cuid())
+  orderId         String              @unique
+  order           Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  // === Người yêu cầu ===
+  requestedById   String              // Buyer ID
+
+  // === Lý do trả hàng ===
+  reason          ReturnReason
+  description     String?            // Mô tả chi tiết thêm
+  images          String[]           // Hình ảnh bằng chứng
+
+  // === Trạng thái ===
+  status          ReturnRequestStatus @default(PENDING)
+
+  // === Seller response ===
+  sellerId        String?             // Seller duyệt
+  sellerDecision String?             // APPROVED / REJECTED
+  sellerReason    String?            // Lý do từ chối (nếu có)
+  sellerDecidedAt DateTime?
+
+  // === Admin response ===
+  adminId         String?
+  adminDecision   String?            // APPROVED / REJECTED / FRAUD_BUYER / FRAUD_SELLER
+  adminReason     String?
+  adminDecidedAt  DateTime?
+
+  // === Admin review (kiểm tra gian lận) ===
+  adminReviewNotes String?           // Ghi chú admin khi xác minh
+  fraudEvidence    Json?             // Bằng chứng gian lận (nếu phát hiện)
+
+  // === Refund tracking ===
+  refundAmount    Decimal?           @db.Decimal(15, 2)
+  refundedAt      DateTime?
+
+  // === Tracking ===
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@index([orderId])
+  @@index([status])
+  @@index([requestedById])
+}
+
+// ============================================================
 // CHAT & MESSAGES
 // ============================================================
 
 model Conversation {
   id          String      @id @default(cuid())
-  
+
   participants ConversationParticipant[]
-  
+
   productId   String?
-  
+  product     Product?    @relation(fields: [productId], references: [id])
+
   lastMessageAt DateTime?
-  
+
   unreadCounts Json?
-  
+
   messages    Message[]
-  
+
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
-  
+  deletedAt   DateTime?   // Soft delete toàn cuộc trò chuyện (khi cả 2 người đều rời)
+
   @@index([lastMessageAt(sort: Desc)])
   @@index([productId])
 }
@@ -573,12 +748,13 @@ model ConversationParticipant {
   id              String       @id @default(cuid())
   conversationId  String
   conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  
+
   userId          String
   user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   joinedAt        DateTime     @default(now())
-  
+  leftAt          DateTime?    // Soft delete - người dùng đã rời khỏi cuộc trò chuyện
+
   @@unique([conversationId, userId])
   @@index([userId])
 }

@@ -138,7 +138,7 @@ export interface CreateProductInput {
   categoryId: string
   title: string
   description?: string
-  condition: "LIKE_NEW" | "EXCELLENT" | "GOOD" | "FAIR" | "POOR"
+  condition: "LIKE_NEW" | "PERFECT_99" | "EXCELLENT_98" | "EXCELLENT_97" | "GOOD"
   ramGb: number
   storageGb: number
   color: string
@@ -151,28 +151,27 @@ export interface CreateProductInput {
 }
 
 export interface HealthCheckInput {
+  serialNumber?: string
+  wifiMacAddress?: string
+  bluetoothMacAddress?: string
+  iosVersion?: string
+  androidVersion?: string
+  activationStatus?: string
+  jailbreakStatus?: string
+  securityLockStatus?: string
+  batteryCycleCount?: number
+  batteryHealth: number
   screen?: "PASS" | "FAIL" | "NOT_TESTED"
-  screenNote?: string
   cameraFront?: "PASS" | "FAIL" | "NOT_TESTED"
-  cameraFrontNote?: string
   cameraBack?: "PASS" | "FAIL" | "NOT_TESTED"
-  cameraBackNote?: string
   speaker?: "PASS" | "FAIL" | "NOT_TESTED"
-  speakerNote?: string
   microphone?: "PASS" | "FAIL" | "NOT_TESTED"
-  microphoneNote?: string
-  buttons?: "PASS" | "FAIL" | "NOT_TESTED"
-  buttonsNote?: string
-  faceId?: "PASS" | "FAIL" | "NOT_TESTED"
-  faceIdNote?: string
-  fingerprint?: "PASS" | "FAIL" | "NOT_TESTED"
-  fingerprintNote?: string
   wifi?: "PASS" | "FAIL" | "NOT_TESTED"
-  wifiNote?: string
   bluetooth?: "PASS" | "FAIL" | "NOT_TESTED"
-  bluetoothNote?: string
+  fingerprint?: "PASS" | "FAIL" | "NOT_TESTED"
+  faceId?: "PASS" | "FAIL" | "NOT_TESTED"
   chargingPort?: "PASS" | "FAIL" | "NOT_TESTED"
-  chargingPortNote?: string
+  overallStatus?: string
   notes?: string
 }
 
@@ -211,13 +210,18 @@ export interface CreateOrderInput {
     quantity: number
     offerId?: string
   }[]
-  shippingAddress: {
+  addressId?: string  // Su dung dia chi da luu (uu tien)
+  shippingAddress?: { // Hoac nhap dia chi truc tiep
     fullName: string
     phone: string
     street: string
-    ward: string
-    district: string
-    city: string
+    provinceCode?: string
+    provinceName?: string
+    wardCode?: string
+    wardName?: string
+    ward?: string
+    district?: string
+    city?: string
   }
   paymentMethod: "SEPAY" | "COD"
 }
@@ -244,6 +248,45 @@ export interface CreateReviewInput {
   delivery?: number
   comment?: string
   photos?: string[]
+}
+
+// ============================================================
+// Address Types
+// ============================================================
+
+export interface AddressInput {
+  fullName: string
+  phone: string
+  street: string
+  provinceCode: string
+  provinceName: string
+  wardCode: string
+  wardName: string
+  district?: string
+  city?: string
+  isDefault?: boolean
+}
+
+export interface AddressWithUser extends Address {
+  user: User
+}
+
+// Vietnam Province API Types
+export interface VietnamProvince {
+  code: string | number
+  name: string
+  codename: string
+  division_type: string
+  phone_code?: number
+}
+
+export interface VietnamWard {
+  code: string | number
+  name: string
+  codename: string
+  division_type: string
+  province_code?: string | number
+  district_code?: string | number
 }
 
 // ============================================================
@@ -279,7 +322,7 @@ export type NotificationPayload = {
 export interface PriceSuggestionInput {
   brandId: string
   modelId: string
-  condition: "LIKE_NEW" | "EXCELLENT" | "GOOD" | "FAIR" | "POOR"
+  condition: "LIKE_NEW" | "PERFECT_99" | "EXCELLENT_98" | "EXCELLENT_97" | "GOOD"
   storageGb: number
   batteryHealth: number
   releaseDate?: Date

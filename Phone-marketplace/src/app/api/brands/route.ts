@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { z } from "zod"
 import { auth } from "@/lib/auth"
@@ -9,10 +9,13 @@ const createBrandSchema = z.object({
 })
 
 // GET /api/brands - Lấy danh sách thương hiệu
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url)
+    const includeInactive = searchParams.get("includeInactive") === "true"
+
     const brands = await prisma.brand.findMany({
-      where: { isActive: true },
+      where: includeInactive ? {} : { isActive: true },
       orderBy: { name: "asc" },
       include: {
         _count: {

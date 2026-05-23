@@ -2,8 +2,8 @@ import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import "./globals.css"
 import { SessionProvider } from "@/components/providers/session-provider"
-import { Header } from "@/components/shared/header"
-import { Footer } from "@/components/shared/footer"
+import { ToastProvider } from "@/components/shared/toast"
+import { LockedAccountGuard } from "@/components/providers/locked-account-guard"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -39,12 +39,14 @@ export default function RootLayout({
   return (
     <html lang="vi">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} min-h-screen flex flex-col antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <SessionProvider>
-          <Header />
-          <main className="flex-1">{children}</main>
-          <Footer />
+          <ToastProvider>
+            <LockedAccountGuard>
+              {children}
+            </LockedAccountGuard>
+          </ToastProvider>
         </SessionProvider>
       </body>
     </html>

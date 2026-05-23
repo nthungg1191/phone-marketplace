@@ -2,7 +2,8 @@
 
 import Link from "next/link"
 import { useSession, signOut } from "next-auth/react"
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
+import { usePathname } from "next/navigation"
 import {
   ShoppingCart,
   User,
@@ -10,269 +11,389 @@ import {
   X,
   ChevronDown,
   LogOut,
-  Package,
   Settings,
   Shield,
   Heart,
+  MessageCircle,
+  LayoutDashboard,
+  Package,
   Bell,
+  Search,
+  Smartphone,
 } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { NotificationPopover } from "./notification-popover"
+import { SellerRegisterModal } from "./seller-register-modal"
+import { SettingsModal } from "./settings-modal"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet"
 
 export function Header() {
   const { data: session, status } = useSession()
+  const pathname = usePathname()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
-  const [isSellerMenuOpen, setIsSellerMenuOpen] = useState(false)
+  const [isScrolled, setIsScrolled] = useState(false)
+  const [unreadMessages, setUnreadMessages] = useState(0)
+  const [cartCount, setCartCount] = useState(0)
+  const [isSellerModalOpen, setIsSellerModalOpen] = useState(false)
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
 
   const user = session?.user
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Handle scroll effect
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10)
+    }
+    window.addEventListener("scroll", handleScroll)
+    return () => window.removeEventListener("scroll", handleScroll)
+  }, [])
+
+  // Fetch notifications
+  useEffect(() => {
+    if (status !== "authenticated") {
+      setUnreadMessages(0)
+      return
+    }
+
+    const fetchUnreadMessages = async () => {
+      try {
+        const res = await fetch("/api/messages/unread-count")
+        if (res.ok) {
+          const data = await res.json()
+          setUnreadMessages(data.count || 0)
+        }
+      } catch {
+        // Silent fail
+      }
+    }
+
+    const fetchCartCount = async () => {
+      try {
+        const res = await fetch("/api/cart/count")
+        if (res.ok) {
+          const data = await res.json()
+          setCartCount(data.count || 0)
+        }
+      } catch {
+        // Silent fail
+      }
+    }
+
+    fetchUnreadMessages()
+    fetchCartCount()
+
+    const interval = setInterval(() => {
+      fetchUnreadMessages()
+      fetchCartCount()
+    }, 30000)
+
+    const handleCartUpdate = () => fetchCartCount()
+    window.addEventListener("cart-updated", handleCartUpdate)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener("cart-updated", handleCartUpdate)
+    }
+  }, [status])
 
   const handleSignOut = () => {
     signOut({ callbackUrl: "/" })
   }
 
+  const navItems = [
+    { href: "/products", label: "Sản phẩm" },
+    { href: "/brands", label: "Thương hiệu" },
+  ]
+
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto px-4">
-        <div className="flex h-16 items-center justify-between">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-lg font-bold text-primary-foreground">EUT</span>
+    <>
+      <header
+        className={cn(
+          "sticky top-0 z-50 w-full transition-all duration-200",
+          isScrolled
+            ? "bg-background/95 backdrop-blur-md border-b shadow-sm"
+            : "bg-background border-b"
+        )}
+      >
+        <div className="container mx-auto px-4">
+          <div className="flex h-16 items-center justify-between gap-4">
+            {/* Logo */}
+            <Link href="/" className="flex items-center gap-3 shrink-0">
+              <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
+                <Smartphone className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <div className="hidden sm:block">
+                <p className="font-bold text-xl tracking-tight leading-none">EUT</p>
+                <p className="text-muted-foreground font-medium text-sm">Marketplace</p>
+              </div>
+            </Link>
+
+            {/* Desktop Navigation */}
+            <nav className="hidden md:flex items-center gap-1">
+              {navItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "px-4 py-2 text-sm font-medium rounded-lg transition-colors",
+                    pathname === item.href || pathname.startsWith(item.href + "/")
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  )}
+                >
+                  {item.label}
+                </Link>
+              ))}
+              {user?.role === "ADMIN" && (
+                <Link
+                  href="/admin"
+                  className={cn(
+                    "px-4 py-2 text-sm font-medium rounded-lg transition-colors",
+                    pathname.startsWith("/admin")
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  )}
+                >
+                  Quản trị
+                </Link>
+              )}
+            </nav>
+
+            {/* Search Bar - Desktop */}
+            <div className="hidden lg:flex flex-1 max-w-md mx-4">
+              <div className="relative w-full">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <input
+                  type="search"
+                  placeholder="Tìm kiếm sản phẩm..."
+                  className="w-full h-10 pl-10 pr-4 rounded-lg border bg-muted/50 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                />
+              </div>
             </div>
-            <span className="hidden sm:block font-bold text-xl">Marketplace</span>
-          </Link>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-6">
-            <Link
-              href="/products"
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Sản phẩm
-            </Link>
-            <Link
-              href="/brands"
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Thương hiệu
-            </Link>
-            {user?.role === "SELLER" && user?.sellerStatus === "APPROVED" && (
-              <div className="relative">
-                <button
-                  onClick={() => setIsSellerMenuOpen(!isSellerMenuOpen)}
-                  className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Quản lý
-                  <ChevronDown className="h-4 w-4" />
-                </button>
-                {isSellerMenuOpen && (
-                  <div className="absolute top-full left-0 mt-2 w-48 bg-background border rounded-lg shadow-lg py-1">
-                    <Link
-                      href="/seller/dashboard"
-                      className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-muted"
-                    >
-                      <Package className="h-4 w-4" />
-                      Dashboard
-                    </Link>
-                    <Link
-                      href="/seller/products"
-                      className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-muted"
-                    >
-                      Sản phẩm của tôi
-                    </Link>
-                    <Link
-                      href="/seller/orders"
-                      className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-muted"
-                    >
-                      Đơn hàng
-                    </Link>
-                  </div>
-                )}
-              </div>
-            )}
-            {user?.role === "ADMIN" && (
-              <div className="relative">
-                <button
-                  onClick={() => setIsSellerMenuOpen(!isSellerMenuOpen)}
-                  className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Admin
-                  <ChevronDown className="h-4 w-4" />
-                </button>
-                {isSellerMenuOpen && (
-                  <div className="absolute top-full left-0 mt-2 w-48 bg-background border rounded-lg shadow-lg py-1">
-                    <Link
-                      href="/admin"
-                      className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-muted"
-                    >
-                      <Shield className="h-4 w-4" />
-                      Dashboard
-                    </Link>
-                    <Link
-                      href="/admin/users"
-                      className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-muted"
-                    >
-                      Người dùng
-                    </Link>
-                    <Link
-                      href="/admin/products"
-                      className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-muted"
-                    >
-                      Sản phẩm
-                    </Link>
-                  </div>
-                )}
-              </div>
-            )}
-          </nav>
-
-          {/* Right Side - Actions */}
-          <div className="flex items-center gap-2">
-            {/* Cart */}
-            <Link
-              href="/cart"
-              className="relative p-2 rounded-lg hover:bg-muted transition-colors"
-            >
-              <ShoppingCart className="h-5 w-5" />
-              <span className="absolute -top-1 -right-1 h-4 w-4 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">
-                0
-              </span>
-            </Link>
-
-            {/* Notifications */}
-            {status === "authenticated" && (
+            {/* Right Actions */}
+            <div className="flex items-center gap-2">
+              {/* Cart */}
               <Link
-                href="/notifications"
+                href="/cart"
                 className="relative p-2 rounded-lg hover:bg-muted transition-colors"
               >
-                <Bell className="h-5 w-5" />
-                <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                  0
-                </span>
+                <ShoppingCart className="h-5 w-5" />
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 h-5 w-5 bg-primary text-primary-foreground text-xs font-bold rounded-full flex items-center justify-center animate-scale-in">
+                    {cartCount > 9 ? "9+" : cartCount}
+                  </span>
+                )}
               </Link>
-            )}
 
-            {/* User Menu */}
-            {status === "loading" ? (
-              <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />
-            ) : status === "authenticated" ? (
-              <div className="relative">
-                <button
-                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                  className="flex items-center gap-2 p-1 rounded-full hover:bg-muted transition-colors"
-                >
-                  {user?.image ? (
-                    <img
-                      src={user?.image}
-                      alt={user?.name || "Avatar"}
-                      className="h-8 w-8 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
-                      <span className="text-sm font-medium text-primary-foreground">
-                        {user?.name?.charAt(0).toUpperCase()}
+              {/* Authenticated Actions */}
+              {mounted && status === "authenticated" && (
+                <>
+                  {/* Messages */}
+                  <Link
+                    href="/messages"
+                    className="relative p-2 rounded-lg hover:bg-muted transition-colors"
+                  >
+                    <MessageCircle className="h-5 w-5" />
+                    {unreadMessages > 0 && (
+                      <span className="absolute -top-1 -right-1 h-5 w-5 bg-blue-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                        {unreadMessages > 9 ? "9+" : unreadMessages}
                       </span>
+                    )}
+                  </Link>
+
+                  {/* Notifications */}
+                  <NotificationPopover />
+                </>
+              )}
+
+              {/* User Menu */}
+              {mounted && (
+                <>
+                  {status === "loading" ? (
+                    <div className="h-9 w-9 rounded-full bg-muted animate-pulse" />
+                  ) : status === "authenticated" ? (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="flex items-center gap-2 p-1 rounded-full hover:bg-muted transition-colors">
+                          <Avatar className="h-9 w-9 border-2 border-transparent hover:border-primary transition-colors">
+                            <AvatarImage src={user?.image || ""} alt={user?.name || "Avatar"} />
+                            <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                              {user?.name?.charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-64">
+                        <DropdownMenuLabel className="font-normal">
+                          <div className="flex flex-col space-y-1">
+                            <p className="text-sm font-medium leading-none">{user?.name}</p>
+                            <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
+                          </div>
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem asChild>
+                          <Link href="/profile" className="cursor-pointer">
+                            <User className="mr-2 h-4 w-4" />
+                            Hồ sơ cá nhân
+                          </Link>
+                        </DropdownMenuItem>
+                        {(user?.role === "SELLER") && (
+                          <DropdownMenuItem asChild>
+                            <Link href="/seller/dashboard" className="cursor-pointer">
+                              <LayoutDashboard className="mr-2 h-4 w-4" />
+                              Dashboard
+                            </Link>
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem asChild>
+                          <Link href="/orders" className="cursor-pointer">
+                            <Package className="mr-2 h-4 w-4" />
+                            Đơn hàng
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link href="/wishlist" className="cursor-pointer">
+                            <Heart className="mr-2 h-4 w-4" />
+                            Yêu thích
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => setIsSettingsModalOpen(true)}
+                          className="cursor-pointer"
+                        >
+                          <Settings className="mr-2 h-4 w-4" />
+                          Cài đặt
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={handleSignOut}
+                          className="cursor-pointer text-destructive focus:text-destructive"
+                        >
+                          <LogOut className="mr-2 h-4 w-4" />
+                          Đăng xuất
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  ) : (
+                    <div className="hidden sm:flex items-center gap-2">
+                      <Link href="/auth/login">
+                        <Button variant="ghost" size="sm">
+                          Đăng nhập
+                        </Button>
+                      </Link>
+                      <Link href="/auth/register">
+                        <Button size="sm">
+                          Đăng ký
+                        </Button>
+                      </Link>
                     </div>
                   )}
-                </button>
-                {isUserMenuOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-56 bg-background border rounded-lg shadow-lg py-1">
-                    <div className="px-4 py-2 border-b">
-                      <p className="font-medium text-sm">{user?.name}</p>
-                      <p className="text-xs text-muted-foreground">{user?.email}</p>
-                      {user?.role !== "BUYER" && (
-                        <span className="inline-block mt-1 px-2 py-0.5 text-xs bg-primary/10 text-primary rounded-full capitalize">
-                          {user?.role}
-                        </span>
-                      )}
-                    </div>
-                    <Link
-                      href="/profile"
-                      className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-muted"
-                    >
-                      <User className="h-4 w-4" />
-                      Hồ sơ cá nhân
-                    </Link>
-                    <Link
-                      href="/wishlist"
-                      className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-muted"
-                    >
-                      <Heart className="h-4 w-4" />
-                      Yêu thích
-                    </Link>
-                    {user?.role === "BUYER" && (
-                      <Link
-                        href="/seller/register"
-                        className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-muted"
-                      >
-                        Đăng ký bán hàng
-                      </Link>
-                    )}
-                    <Link
-                      href="/settings"
-                      className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-muted"
-                    >
-                      <Settings className="h-4 w-4" />
-                      Cài đặt
-                    </Link>
-                    <button
-                      onClick={handleSignOut}
-                      className="flex items-center gap-2 w-full px-4 py-2 text-sm hover:bg-muted text-red-600"
-                    >
-                      <LogOut className="h-4 w-4" />
-                      Đăng xuất
-                    </button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <Link href="/auth/login">
-                  <button className="px-4 py-2 text-sm font-medium hover:bg-muted rounded-lg transition-colors">
-                    Đăng nhập
-                  </button>
-                </Link>
-                <Link href="/auth/register">
-                  <button className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
-                    Đăng ký
-                  </button>
-                </Link>
-              </div>
-            )}
-
-            {/* Mobile Menu Toggle */}
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="md:hidden p-2 rounded-lg hover:bg-muted transition-colors"
-            >
-              {isMenuOpen ? (
-                <X className="h-5 w-5" />
-              ) : (
-                <Menu className="h-5 w-5" />
+                </>
               )}
-            </button>
+
+              {/* Mobile Menu */}
+              <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" className="md:hidden">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-80">
+                  <SheetHeader className="pb-4 border-b">
+                    <SheetTitle>
+                      <Link href="/" className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                          <Smartphone className="h-4 w-4 text-primary-foreground" />
+                        </div>
+                        <span className="font-bold">EUT Marketplace</span>
+                      </Link>
+                    </SheetTitle>
+                  </SheetHeader>
+                  <nav className="flex flex-col gap-1 mt-4">
+                    {navItems.map((item) => (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setIsMenuOpen(false)}
+                        className={cn(
+                          "px-4 py-3 text-sm font-medium rounded-lg transition-colors",
+                          pathname === item.href
+                            ? "bg-primary/10 text-primary"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                        )}
+                      >
+                        {item.label}
+                      </Link>
+                    ))}
+                    {mounted && status !== "authenticated" && (
+                      <>
+                        <div className="h-px bg-border my-2" />
+                        <Link href="/auth/login" onClick={() => setIsMenuOpen(false)}>
+                          <Button variant="outline" className="w-full justify-start">
+                            <User className="mr-2 h-4 w-4" />
+                            Đăng nhập
+                          </Button>
+                        </Link>
+                        <Link href="/auth/register" onClick={() => setIsMenuOpen(false)}>
+                          <Button className="w-full justify-start">
+                            Đăng ký
+                          </Button>
+                        </Link>
+                      </>
+                    )}
+                    {mounted && status === "authenticated" && user?.role === "ADMIN" && (
+                      <>
+                        <div className="h-px bg-border my-2" />
+                        <Link href="/admin" onClick={() => setIsMenuOpen(false)}>
+                          <Button variant="ghost" className="w-full justify-start">
+                            <Shield className="mr-2 h-4 w-4" />
+                            Quản trị
+                          </Button>
+                        </Link>
+                      </>
+                    )}
+                  </nav>
+                </SheetContent>
+              </Sheet>
+            </div>
           </div>
         </div>
+      </header>
 
-        {/* Mobile Navigation */}
-        {isMenuOpen && (
-          <div className="md:hidden border-t py-4">
-            <nav className="flex flex-col gap-2">
-              <Link
-                href="/products"
-                className="px-4 py-2 text-sm font-medium rounded-lg hover:bg-muted"
-              >
-                Sản phẩm
-              </Link>
-              <Link
-                href="/brands"
-                className="px-4 py-2 text-sm font-medium rounded-lg hover:bg-muted"
-              >
-                Thương hiệu
-              </Link>
-            </nav>
-          </div>
-        )}
-      </div>
-    </header>
+      {/* Seller Register Modal */}
+      <SellerRegisterModal
+        open={isSellerModalOpen}
+        onOpenChange={setIsSellerModalOpen}
+      />
+
+      {/* Settings Modal */}
+      <SettingsModal
+        open={isSettingsModalOpen}
+        onOpenChange={setIsSettingsModalOpen}
+      />
+    </>
   )
 }

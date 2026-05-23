@@ -18,6 +18,15 @@ export async function GET() {
       include: {
         children: {
           orderBy: { name: "asc" },
+          include: {
+            _count: { select: { products: true } },
+            children: {
+              orderBy: { name: "asc" },
+              include: {
+                _count: { select: { products: true } },
+              },
+            },
+          },
         },
         _count: {
           select: { products: true },

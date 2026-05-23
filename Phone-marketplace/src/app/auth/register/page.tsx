@@ -36,7 +36,6 @@ export default function RegisterPage() {
     setErrorMessage(null)
     setSuccessMessage(null)
 
-    // Validation
     if (formData.password !== formData.confirmPassword) {
       setErrorMessage("Mật khẩu xác nhận không khớp")
       return
@@ -71,7 +70,6 @@ export default function RegisterPage() {
 
       setSuccessMessage("Đăng ký thành công! Đang chuyển hướng...")
 
-      // Auto sign in after registration
       const signInResult = await signIn("credentials", {
         email: formData.email,
         password: formData.password,
@@ -79,7 +77,6 @@ export default function RegisterPage() {
       })
 
       if (signInResult?.error) {
-        // Registration succeeded but auto login failed
         setTimeout(() => router.push("/auth/login"), 1500)
         return
       }
@@ -92,7 +89,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="space-y-1 text-center">
           <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
