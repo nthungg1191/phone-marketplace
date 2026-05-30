@@ -1,25 +1,5 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { auth } from "@/lib/auth"
-import { z } from "zod"
-import { v4 as uuidv4 } from "uuid"
-
-const productFilterSchema = z.object({
-  brandId: z.string().optional(),
-  modelId: z.string().optional(),
-  categoryId: z.string().optional(),
-  condition: z.array(z.string()).optional(),
-  minPrice: z.coerce.number().optional(),
-  maxPrice: z.coerce.number().optional(),
-  minBatteryHealth: z.coerce.number().optional(),
-  maxBatteryHealth: z.coerce.number().optional(),
-  ramGb: z.array(z.coerce.number()).optional(),
-  storageGb: z.array(z.coerce.number()).optional(),
-  color: z.array(z.string()).optional(),
-  search: z.string().optional(),
-  sortBy: z.enum(["createdAt", "price", "viewCount"]).optional().default("createdAt"),
-  sortOrder: z.enum(["asc", "desc"]).optional().default("desc"),
-})
 
 // GET /api/products - Danh sách sản phẩm
 export async function GET(request: Request) {

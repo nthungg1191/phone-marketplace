@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { Prisma, ProductCondition } from "@prisma/client"
 
 // GET /api/stores/[id] - Lấy thông tin store profile
 export async function GET(
@@ -43,15 +44,16 @@ export async function GET(
     }
 
     // Build product filter
-    const productWhere: any = {
+    const productWhere: Prisma.ProductWhereInput = {
       sellerId: id,
       status: "ACTIVE",
+      ...(brand && { brandId: brand }),
+      ...(condition && { condition: condition as ProductCondition }),
     }
-    if (brand) productWhere.brandId = brand
-    if (condition) productWhere.condition = condition
 
     // Sort options
-    const orderBy: any = { createdAt: "desc" }
+    type OrderBy = Record<string, string | { _count: "desc" }>
+    const orderBy: OrderBy = { createdAt: "desc" }
     if (sort === "price_asc") orderBy.price = "asc"
     else if (sort === "price_desc") orderBy.price = "desc"
     else if (sort === "rating") orderBy.reviews = { _count: "desc" }

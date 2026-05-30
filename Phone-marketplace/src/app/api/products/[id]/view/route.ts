@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { auth } from "@/lib/auth"
 
 // POST /api/products/[id]/view - Increment view count (client-side)
 export async function POST(

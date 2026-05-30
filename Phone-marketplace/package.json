@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
+    "postbuild": "node -e \"const fs=require('fs');const p='tsconfig.json';let c=fs.readFileSync(p,'utf8');if(c.includes('.next/dev/types')){c=c.replace(',\\n    \".next/dev/types/**/*.ts\"','');fs.writeFileSync(p,c);console.log('Fixed tsconfig.json')}\"",
     "start": "next start",
     "lint": "eslint",
     "db:generate": "prisma generate",

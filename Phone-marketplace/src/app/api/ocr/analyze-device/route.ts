@@ -195,7 +195,7 @@ export async function POST(request: Request) {
         throw new Error("No JSON found in response")
       }
       parsedData = JSON.parse(jsonMatch[0])
-    } catch (parseError) {
+    } catch {
       console.error("Failed to parse AI response:", responseText)
       return NextResponse.json(
         { error: "Không thể đọc kết quả từ AI. Vui lòng thử lại với ảnh rõ hơn." },

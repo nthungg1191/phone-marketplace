@@ -10,14 +10,13 @@ import {
   ChevronRight,
   LogOut,
   Menu,
-  X,
   Bell,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
 interface NavItem {
@@ -37,30 +36,19 @@ interface DashboardLayoutProps {
   navGroups: NavGroup[]
 }
 
-export function DashboardLayout({ children, navGroups }: DashboardLayoutProps) {
-  const [isCollapsed, setIsCollapsed] = useState(false)
-  const [isMobileOpen, setIsMobileOpen] = useState(false)
-  const pathname = usePathname()
-  const { data: session } = useSession()
-  const [mounted, setMounted] = useState(false)
+interface NavContentProps {
+  collapsed: boolean
+  navGroups: NavGroup[]
+  pathname: string
+  onToggleCollapse: () => void
+}
 
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
+function NavContent({ collapsed, navGroups, pathname, onToggleCollapse }: NavContentProps) {
   const handleSignOut = () => {
     signOut({ callbackUrl: "/" })
   }
 
-  const getPageTitle = () => {
-    const allItems = navGroups.flatMap((g) => g.items)
-    const currentItem = allItems.find(
-      (item) => pathname === item.href || pathname.startsWith(item.href + "/")
-    )
-    return currentItem?.label || "Dashboard"
-  }
-
-  const NavContent = ({ collapsed = false }: { collapsed?: boolean }) => (
+  return (
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className={cn(
@@ -72,17 +60,15 @@ export function DashboardLayout({ children, navGroups }: DashboardLayoutProps) {
             <p className="text-sm font-bold text-primary-foreground">EUT</p>
           </div>
         ) : (
-          <>
-            <Link href="/" className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
-                <span className="text-sm font-bold text-primary-foreground">EUT</span>
-              </div>
-              <div>
-                <p className="font-bold text-lg leading-none">EUT</p>
-                <p className="text-xs text-muted-foreground">Marketplace</p>
-              </div>
-            </Link>
-          </>
+          <Link href="/" className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
+              <span className="text-sm font-bold text-primary-foreground">EUT</span>
+            </div>
+            <div>
+              <p className="font-bold text-lg leading-none">EUT</p>
+              <p className="text-xs text-muted-foreground">Marketplace</p>
+            </div>
+          </Link>
         )}
       </div>
 
@@ -176,7 +162,7 @@ export function DashboardLayout({ children, navGroups }: DashboardLayoutProps) {
 
         {/* Collapse Toggle - Desktop */}
         <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
+          onClick={onToggleCollapse}
           className={cn(
             "hidden lg:flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors",
             collapsed && "justify-center"
@@ -206,6 +192,30 @@ export function DashboardLayout({ children, navGroups }: DashboardLayoutProps) {
       </div>
     </div>
   )
+}
+
+export function DashboardLayout({ children, navGroups }: DashboardLayoutProps) {
+  const [isCollapsed, setIsCollapsed] = useState(false)
+  const [isMobileOpen, setIsMobileOpen] = useState(false)
+  const pathname = usePathname()
+  const { data: session } = useSession()
+  const [mounted, setMounted] = useState(
+    typeof window !== "undefined"
+  )
+
+  useEffect(() => {
+    if (!mounted) {
+      setMounted(true)
+    }
+  }, [mounted])
+
+  const getPageTitle = () => {
+    const allItems = navGroups.flatMap((g) => g.items)
+    const currentItem = allItems.find(
+      (item) => pathname === item.href || pathname.startsWith(item.href + "/")
+    )
+    return currentItem?.label || "Dashboard"
+  }
 
   if (!mounted) {
     return (
@@ -230,7 +240,12 @@ export function DashboardLayout({ children, navGroups }: DashboardLayoutProps) {
           isCollapsed ? "w-[72px]" : "w-64"
         )}
       >
-        <NavContent collapsed={isCollapsed} />
+        <NavContent
+          collapsed={isCollapsed}
+          navGroups={navGroups}
+          pathname={pathname}
+          onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
+        />
       </aside>
 
       {/* Mobile Sidebar */}
@@ -240,7 +255,12 @@ export function DashboardLayout({ children, navGroups }: DashboardLayoutProps) {
             <SheetTitle>Menu</SheetTitle>
           </SheetHeader>
           <div className="bg-sidebar h-full">
-            <NavContent />
+            <NavContent
+              collapsed={false}
+              navGroups={navGroups}
+              pathname={pathname}
+              onToggleCollapse={() => {}}
+            />
           </div>
         </SheetContent>
       </Sheet>
