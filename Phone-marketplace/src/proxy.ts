@@ -2,39 +2,45 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { getToken } from "next-auth/jwt"
 
-const publicRoutes = ["/", "/products", "/brands", "/auth/login", "/auth/register", "/auth/error", "/api/auth"]
-const protectedRoutes = ["/profile", "/orders", "/cart", "/wishlist", "/notifications", "/messages", "/settings", "/seller/register"]
-const sellerRoutes = ["/seller/dashboard", "/seller/products", "/seller/orders"]
-const adminRoutes = ["/admin", "/admin/users", "/admin/products", "/admin/orders", "/admin/settings"]
+const PUBLIC_PREFIXES = ["/", "/products", "/brands", "/auth"]
+const PROTECTED_PREFIXES = ["/profile", "/orders", "/cart", "/wishlist", "/notifications", "/messages", "/settings", "/seller/register"]
+const SELLER_PREFIXES = ["/seller/dashboard", "/seller/products", "/seller/orders"]
+const ADMIN_PREFIXES = ["/admin"]
+
+function matchesAnyRoute(path: string, prefixes: string[]): boolean {
+  return prefixes.some(
+    (prefix) => path === prefix || path.startsWith(prefix + "/")
+  )
+}
 
 export default async function middleware(req: NextRequest) {
-  const { nextUrl } = req
-  const path = nextUrl.pathname
+  const { pathname, searchParams } = req.nextUrl
 
   const token = await getToken({ req, secret: process.env.AUTH_SECRET })
   const isLoggedIn = !!token
   const userRole = token?.role as string | undefined
   const sellerStatus = token?.sellerStatus as string | undefined
 
-  const isPublicRoute = publicRoutes.some((route) => path === route || path.startsWith(route + "/"))
-  if (isPublicRoute) return NextResponse.next()
+  if (matchesAnyRoute(pathname, PUBLIC_PREFIXES)) {
+    if (isLoggedIn && pathname.startsWith("/auth/login")) {
+      const callbackUrl = searchParams.get("callbackUrl")
+      return NextResponse.redirect(new URL(callbackUrl || "/", req.url))
+    }
+    return NextResponse.next()
+  }
 
-  const isProtectedRoute = protectedRoutes.some((route) => path === route || path.startsWith(route + "/"))
-  const isSellerRoute = sellerRoutes.some((route) => path === route || path.startsWith(route + "/"))
-  const isAdminRoute = adminRoutes.some((route) => path === route || path.startsWith(route + "/"))
-
-  if (!isLoggedIn && (isProtectedRoute || isSellerRoute || isAdminRoute)) {
+  if (matchesAnyRoute(pathname, PROTECTED_PREFIXES) && !isLoggedIn) {
     const loginUrl = new URL("/auth/login", req.url)
-    loginUrl.searchParams.set("callbackUrl", path + nextUrl.search)
+    loginUrl.searchParams.set("callbackUrl", pathname + searchParams)
     return NextResponse.redirect(loginUrl)
   }
 
-  if (isAdminRoute && userRole !== "ADMIN") return NextResponse.redirect(new URL("/", req.url))
-  if (isSellerRoute && (userRole !== "SELLER" || sellerStatus !== "APPROVED")) return NextResponse.redirect(new URL("/", req.url))
+  if (matchesAnyRoute(pathname, ADMIN_PREFIXES) && userRole !== "ADMIN") {
+    return NextResponse.redirect(new URL("/", req.url))
+  }
 
-  if (isLoggedIn && path.startsWith("/auth/login")) {
-    const callbackUrl = nextUrl.searchParams.get("callbackUrl")
-    return NextResponse.redirect(new URL(callbackUrl || "/", req.url))
+  if (matchesAnyRoute(pathname, SELLER_PREFIXES) && (userRole !== "SELLER" || sellerStatus !== "APPROVED")) {
+    return NextResponse.redirect(new URL("/", req.url))
   }
 
   return NextResponse.next()
