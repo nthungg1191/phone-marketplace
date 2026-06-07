@@ -45,20 +45,7 @@ export async function PATCH(request: Request) {
     }
 
     const body = await request.json()
-    const {
-      name,
-      phone,
-      avatar,
-      // Account settings
-      emailNotifications,
-      offerNotifications,
-      orderNotifications,
-      marketingEmails,
-      // Privacy settings
-      showProfile,
-      showPhone,
-      showEmail,
-    } = body
+    const { name, phone, avatar } = body
 
     // Update basic profile
     const updateData: Record<string, unknown> = {}

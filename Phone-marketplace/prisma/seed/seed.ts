@@ -2,7 +2,6 @@ import { PrismaClient, ProductCondition, WarrantyType, HealthCheckStatus } from 
 import bcrypt from "bcryptjs"
 
 const PASS: HealthCheckStatus = "PASS"
-const FAIL: HealthCheckStatus = "FAIL"
 const NOT_TESTED: HealthCheckStatus = "NOT_TESTED"
 
 const prisma = new PrismaClient()

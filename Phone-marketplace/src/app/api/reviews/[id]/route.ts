@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth"
 
 // GET /api/reviews/[id] - Lấy chi tiết đánh giá
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {

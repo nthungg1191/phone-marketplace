@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
 interface NavItem {
@@ -82,17 +82,15 @@ function NavContent({ collapsed, navGroups, pathname, onToggleCollapse, pendingC
             <p className="text-sm font-bold text-primary-foreground">EUT</p>
           </div>
         ) : (
-          <>
-            <Link href="/" className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
-                <span className="text-sm font-bold text-primary-foreground">EUT</span>
-              </div>
-              <div>
-                <p className="font-bold text-lg leading-none">EUT</p>
-                <p className="text-xs text-muted-foreground">Marketplace</p>
-              </div>
-            </Link>
-          </>
+          <Link href="/" className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
+              <span className="text-sm font-bold text-primary-foreground">EUT</span>
+            </div>
+            <div>
+              <p className="font-bold text-lg leading-none">EUT</p>
+              <p className="text-xs text-muted-foreground">Marketplace</p>
+            </div>
+          </Link>
         )}
       </div>
 
@@ -226,15 +224,6 @@ function NavContent({ collapsed, navGroups, pathname, onToggleCollapse, pendingC
       </div>
     </div>
   )
-
-  // Wrap with TooltipProvider if there are collapsed items
-  const hasCollapsedItems = navGroups.some(group =>
-    group.items.some(item => getBadgeCount(item, pendingCounts))
-  )
-
-  if (collapsed && hasCollapsedItems) {
-    return <TooltipProvider>{navContent}</TooltipProvider>
-  }
 
   return navContent
 }

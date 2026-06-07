@@ -6,7 +6,6 @@ import { useSearchParams } from "next/navigation"
 import {
   XCircle,
   ShoppingCart,
-  ArrowRight,
   Clock,
   RefreshCw,
   Package,

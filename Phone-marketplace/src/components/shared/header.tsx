@@ -2,14 +2,12 @@
 
 import Link from "next/link"
 import { useSession, signOut } from "next-auth/react"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { usePathname } from "next/navigation"
 import {
   ShoppingCart,
   User,
   Menu,
-  X,
-  ChevronDown,
   LogOut,
   Settings,
   Shield,
@@ -17,7 +15,6 @@ import {
   MessageCircle,
   LayoutDashboard,
   Package,
-  Bell,
   Search,
   Smartphone,
 } from "lucide-react"
@@ -52,13 +49,17 @@ export function Header() {
   const [cartCount, setCartCount] = useState(0)
   const [isSellerModalOpen, setIsSellerModalOpen] = useState(false)
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false)
-  const [mounted, setMounted] = useState(false)
+  const [mounted, setMounted] = useState(
+    typeof window !== "undefined"
+  )
 
   const user = session?.user
 
   useEffect(() => {
-    setMounted(true)
-  }, [])
+    if (!mounted) {
+      setMounted(true)
+    }
+  }, [mounted])
 
   // Handle scroll effect
   useEffect(() => {
@@ -72,7 +73,6 @@ export function Header() {
   // Fetch notifications
   useEffect(() => {
     if (status !== "authenticated") {
-      setUnreadMessages(0)
       return
     }
 
