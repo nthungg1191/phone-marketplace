@@ -11,6 +11,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, Mail, Lock, User, Phone, AlertCircle, Eye, EyeOff, CheckCircle2 } from "lucide-react"
 
+const VIETNAM_PHONE_REGEX = /^(0[1-9][0-9]{8}|0[1-9][0-9]{7})$/
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/
+
 export default function RegisterPage() {
   const router = useRouter()
 
@@ -21,14 +24,59 @@ export default function RegisterPage() {
     password: "",
     confirmPassword: "",
   })
+  const [fieldErrors, setFieldErrors] = React.useState<Record<string, string>>({})
   const [showPassword, setShowPassword] = React.useState(false)
   const [isLoading, setIsLoading] = React.useState(false)
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
   const [successMessage, setSuccessMessage] = React.useState<string | null>(null)
 
+  function validateField(name: string, value: string): string | null {
+    switch (name) {
+      case "name":
+        if (!value.trim()) return "Vui lòng nhập họ và tên"
+        if (value.trim().length < 2) return "Tên phải có ít nhất 2 ký tự"
+        return null
+      case "email":
+        if (!value.trim()) return "Vui lòng nhập email"
+        if (!EMAIL_REGEX.test(value.trim())) return "Email không hợp lệ"
+        return null
+      case "phone":
+        if (!value.trim()) return null
+        if (!VIETNAM_PHONE_REGEX.test(value.trim())) {
+          return "Số điện thoại không hợp lệ (VD: 0912345678)"
+        }
+        return null
+      case "password":
+        if (!value) return "Vui lòng nhập mật khẩu"
+        if (value.length < 6) return "Mật khẩu phải có ít nhất 6 ký tự"
+        return null
+      case "confirmPassword":
+        if (!value) return "Vui lòng xác nhận mật khẩu"
+        if (value !== formData.password) return "Mật khẩu xác nhận không khớp"
+        return null
+      default:
+        return null
+    }
+  }
+
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
+    if (fieldErrors[name]) {
+      setFieldErrors((prev) => {
+        const next = { ...prev }
+        delete next[name]
+        return next
+      })
+    }
+  }
+
+  function handleBlur(e: React.FocusEvent<HTMLInputElement>) {
+    const { name, value } = e.target
+    const error = validateField(name, value)
+    if (error) {
+      setFieldErrors((prev) => ({ ...prev, [name]: error }))
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -36,13 +84,14 @@ export default function RegisterPage() {
     setErrorMessage(null)
     setSuccessMessage(null)
 
-    if (formData.password !== formData.confirmPassword) {
-      setErrorMessage("Mật khẩu xác nhận không khớp")
-      return
+    const errors: Record<string, string> = {}
+    for (const key of ["name", "email", "phone", "password", "confirmPassword"] as const) {
+      const error = validateField(key, formData[key])
+      if (error) errors[key] = error
     }
 
-    if (formData.password.length < 6) {
-      setErrorMessage("Mật khẩu phải có ít nhất 6 ký tự")
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors)
       return
     }
 
@@ -128,11 +177,18 @@ export default function RegisterPage() {
                   placeholder="Nguyễn Văn A"
                   value={formData.name}
                   onChange={handleChange}
-                  className="pl-10"
+                  onBlur={handleBlur}
+                  className={`pl-10 ${fieldErrors.name ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                   required
                   disabled={isLoading}
                 />
               </div>
+              {fieldErrors.name && (
+                <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {fieldErrors.name}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -146,11 +202,18 @@ export default function RegisterPage() {
                   placeholder="nguyenvana@example.com"
                   value={formData.email}
                   onChange={handleChange}
-                  className="pl-10"
+                  onBlur={handleBlur}
+                  className={`pl-10 ${fieldErrors.email ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                   required
                   disabled={isLoading}
                 />
               </div>
+              {fieldErrors.email && (
+                <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {fieldErrors.email}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -161,13 +224,21 @@ export default function RegisterPage() {
                   id="phone"
                   name="phone"
                   type="tel"
+                  inputMode="tel"
                   placeholder="0912345678"
                   value={formData.phone}
                   onChange={handleChange}
-                  className="pl-10"
+                  onBlur={handleBlur}
+                  className={`pl-10 ${fieldErrors.phone ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                   disabled={isLoading}
                 />
               </div>
+              {fieldErrors.phone && (
+                <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {fieldErrors.phone}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -181,7 +252,8 @@ export default function RegisterPage() {
                   placeholder="••••••••"
                   value={formData.password}
                   onChange={handleChange}
-                  className="pl-10 pr-10"
+                  onBlur={handleBlur}
+                  className={`pl-10 pr-10 ${fieldErrors.password ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                   required
                   disabled={isLoading}
                 />
@@ -193,6 +265,12 @@ export default function RegisterPage() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+              {fieldErrors.password && (
+                <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {fieldErrors.password}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -206,11 +284,18 @@ export default function RegisterPage() {
                   placeholder="••••••••"
                   value={formData.confirmPassword}
                   onChange={handleChange}
-                  className="pl-10"
+                  onBlur={handleBlur}
+                  className={`pl-10 ${fieldErrors.confirmPassword ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                   required
                   disabled={isLoading}
                 />
               </div>
+              {fieldErrors.confirmPassword && (
+                <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {fieldErrors.confirmPassword}
+                </p>
+              )}
             </div>
 
             <Button type="submit" className="w-full" disabled={isLoading}>

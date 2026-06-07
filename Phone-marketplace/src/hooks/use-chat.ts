@@ -31,7 +31,7 @@ interface UseChatPollingOptions {
 export function useChatPolling({
   conversationId,
   enabled = true,
-  interval = 10000, // 10 seconds - giảm từ 3s
+  interval = 3000, // 10 seconds - giảm từ 3s
   onNewMessage,
 }: UseChatPollingOptions) {
   const [messages, setMessages] = React.useState<Message[]>([])

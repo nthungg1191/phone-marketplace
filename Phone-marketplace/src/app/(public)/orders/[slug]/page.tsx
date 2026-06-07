@@ -180,6 +180,7 @@ export default function OrderDetailPage() {
   const [reviewDelivery, setReviewDelivery] = React.useState(5)
   const [reviewComment, setReviewComment] = React.useState("")
   const [reviewSubmitting, setReviewSubmitting] = React.useState(false)
+  const paymentExpiryRefetchedRef = React.useRef(false)
 
   // Fetch order data - force refresh when orderId changes (e.g., after payment)
   React.useEffect(() => {
@@ -251,14 +252,23 @@ export default function OrderDetailPage() {
 
       if (diff <= 0) {
         setTimeRemaining("Đã hết hạn")
-        // Refetch order to get updated status
-        fetch(`/api/orders/${orderId}`)
-          .then(res => res.json())
-          .then(data => {
-            if (data.order) setOrder(data.order)
-          })
+
+        if (!paymentExpiryRefetchedRef.current) {
+          paymentExpiryRefetchedRef.current = true
+          fetch(`/api/orders/${orderId}`)
+            .then(res => res.json())
+            .then(data => {
+              if (data.order) setOrder(data.order)
+            })
+            .catch(() => {
+              // Ignore background refresh failures; page already shows expired state.
+            })
+        }
+
         return
       }
+
+      paymentExpiryRefetchedRef.current = false
 
       const minutes = Math.floor(diff / 60000)
       const seconds = Math.floor((diff % 60000) / 1000)

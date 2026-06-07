@@ -8,6 +8,7 @@ import {
   Star,
   Store,
   Settings,
+  BarChart3,
 } from "lucide-react"
 import { DashboardLayout } from "./dashboard-layout"
 
@@ -16,6 +17,7 @@ const navGroups = [
     label: "Tổng quan",
     items: [
       { label: "Dashboard", href: "/seller/dashboard", icon: LayoutDashboard },
+      { label: "Báo cáo", href: "/seller/report", icon: BarChart3 },
     ],
   },
   {

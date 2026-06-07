@@ -1,7 +1,5 @@
 "use client"
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
 import {
   Shield,
   Users,
@@ -10,6 +8,8 @@ import {
   Tag,
   Settings,
   LayoutDashboard,
+  FileText,
+  Activity,
 } from "lucide-react"
 import { DashboardLayout } from "./dashboard-layout"
 
@@ -21,14 +21,32 @@ const navGroups = [
     ],
   },
   {
-    label: "Quản lý",
+    label: "Người dùng",
     items: [
       { label: "Người dùng", href: "/admin/users", icon: Users },
+      { label: "Duyệt Seller", href: "/admin/sellers", icon: Shield },
+    ],
+  },
+  {
+    label: "Kinh doanh",
+    items: [
       { label: "Sản phẩm", href: "/admin/products", icon: Package },
       { label: "Đơn hàng", href: "/admin/orders", icon: ShoppingBag },
-      { label: "Duyệt Seller", href: "/admin/sellers", icon: Shield },
-      { label: "Thương hiệu", href: "/admin/brands", icon: Tag },
+      { label: "Hoàn tiền", href: "/admin/orders?status=RETURN_PENDING", icon: ShoppingBag },
+    ],
+  },
+  {
+    label: "Danh mục",
+    items: [
       { label: "Danh mục", href: "/admin/categories", icon: Tag },
+      { label: "Thương hiệu", href: "/admin/brands", icon: Tag },
+    ],
+  },
+  {
+    label: "Báo cáo",
+    items: [
+      { label: "Báo cáo", href: "/admin/reports", icon: FileText },
+      { label: "Nhật ký", href: "/admin/activity", icon: Activity },
     ],
   },
   {
@@ -39,9 +57,20 @@ const navGroups = [
   },
 ]
 
-export function AdminLayout({ children }: { children: React.ReactNode }) {
+interface AdminLayoutClientProps {
+  children: React.ReactNode
+  pendingCounts?: {
+    sellers?: number
+    products?: number
+    returns?: number
+    complaints?: number
+    violations?: number
+  }
+}
+
+export function AdminLayout({ children, pendingCounts }: AdminLayoutClientProps) {
   return (
-    <DashboardLayout navGroups={navGroups}>
+    <DashboardLayout navGroups={navGroups} pendingCounts={pendingCounts}>
       {children}
     </DashboardLayout>
   )

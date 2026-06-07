@@ -226,6 +226,7 @@ model User {
   conversations   ConversationParticipant[]
   trustScoreHistory TrustScoreHistory[]
   wishlistItems   Wishlist[]
+  aiConversations AIConversation[]
 
   // OAuth accounts
   accounts        Account[]
@@ -861,6 +862,62 @@ model SystemSetting {
 // ============================================================
 // PRICE HISTORY
 // ============================================================
+
+// ============================================================
+// AI SHOPPING ASSISTANT
+// ============================================================
+
+enum AIIntent {
+  PRODUCT_SEARCH
+  PRODUCT_COMPARISON
+  PRODUCT_QUESTION
+  ORDER_SUPPORT
+  PAYMENT_SUPPORT
+  RETURN_REFUND
+  POLICY_FAQ
+  SHOPPING_PREFERENCE
+  OUT_OF_SCOPE
+}
+
+model AIConversation {
+  id          String      @id @default(cuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  messages    AIMessage[]
+
+  // Conversation state for slot filling
+  state       Json?       // { "intent": "PRODUCT_SEARCH", "budget": 10000000, "brand": "Xiaomi", "usage": "gaming", "stage": "collecting" }
+
+  // Analytics
+  intentCounts Json?      // { "PRODUCT_SEARCH": 5, "ORDER_SUPPORT": 2 }
+
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([userId])
+  @@index([createdAt(sort: Desc)])
+}
+
+model AIMessage {
+  id              String        @id @default(cuid())
+  conversationId  String
+  conversation    AIConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  role            String        // "user" | "assistant" | "system"
+  content         String        @db.Text
+  htmlContent    String?      @db.Text  // Rendered HTML version with product links
+
+  intent          AIIntent?     // Detected intent
+  metadata        Json?         // Additional data (search results, etc.)
+
+  tokensUsed      Int?          // Token count for cost tracking
+
+  createdAt       DateTime      @default(now())
+
+  @@index([conversationId])
+  @@index([createdAt(sort: Desc)])
+}
 
 model PriceHistory {
   id          String   @id @default(cuid())

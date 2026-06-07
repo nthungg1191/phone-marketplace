@@ -9,6 +9,7 @@ import {
   Package,
   ShoppingBag,
   TrendingUp,
+  TrendingDown,
   Eye,
   Plus,
   ArrowRight,
@@ -18,12 +19,15 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
-  TrendingDown,
   Users,
   BarChart3,
+  RefreshCw,
+  Award,
   ArrowUpRight,
   ArrowDownRight,
-  MoreHorizontal,
+  ThumbsUp,
+  Calendar,
+  RefreshCcw,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -41,11 +45,37 @@ interface DashboardStats {
   totalOrders: number
   pendingOrders: number
   completedOrders: number
+  cancelledOrders: number
+  shippingOrders: number
   totalRevenue: number
+  thisMonthRevenue: number
+  revenueChange: number
   avgRating: number
   totalReviews: number
-  revenueChange?: number
-  ordersChange?: number
+  successRate: number
+  cancellationRate: number
+  ordersByStatus: Record<string, number>
+  ordersByDay: Array<{
+    date: string
+    count: number
+    revenue: number
+  }>
+  topProducts: Array<{
+    id: string
+    title: string
+    slug: string
+    price: number
+    images: Array<{ url: string }>
+    salesCount: number
+  } | null>
+  recentReviews: Array<{
+    id: string
+    rating: number
+    comment: string | null
+    createdAt: string
+    reviewer: { name: string; avatar: string | null }
+    product: { title: string; slug: string }
+  }>
 }
 
 interface RecentOrder {
@@ -75,9 +105,26 @@ const statusConfig: Record<string, { label: string; color: string; bg: string }>
   CONFIRMED: { label: "Đã xác nhận", color: "text-indigo-600", bg: "bg-indigo-50 border-indigo-200" },
   SHIPPING: { label: "Đang giao", color: "text-purple-600", bg: "bg-purple-50 border-purple-200" },
   DELIVERED: { label: "Đã giao", color: "text-cyan-600", bg: "bg-cyan-50 border-cyan-200" },
+  RECEIVED: { label: "Đã nhận", color: "text-blue-600", bg: "bg-blue-100 border-blue-200" },
+  RETURN_PERIOD: { label: "Dùng thử", color: "text-teal-600", bg: "bg-teal-50 border-teal-200" },
+  RETURN_PENDING: { label: "Chờ trả hàng", color: "text-amber-600", bg: "bg-amber-50 border-amber-200" },
   COMPLETED: { label: "Hoàn thành", color: "text-green-600", bg: "bg-green-50 border-green-200" },
   CANCELLED: { label: "Đã hủy", color: "text-red-600", bg: "bg-red-50 border-red-200" },
   REFUNDED: { label: "Hoàn tiền", color: "text-orange-600", bg: "bg-orange-50 border-orange-200" },
+}
+
+const statusColors: Record<string, string> = {
+  PENDING_PAYMENT: "bg-yellow-500",
+  PAID: "bg-blue-500",
+  CONFIRMED: "bg-indigo-500",
+  SHIPPING: "bg-purple-500",
+  DELIVERED: "bg-cyan-500",
+  RECEIVED: "bg-blue-600",
+  RETURN_PERIOD: "bg-teal-500",
+  RETURN_PENDING: "bg-amber-500",
+  COMPLETED: "bg-green-500",
+  CANCELLED: "bg-red-500",
+  REFUNDED: "bg-orange-500",
 }
 
 export default function SellerDashboardPage() {
@@ -88,6 +135,7 @@ export default function SellerDashboardPage() {
   const [recentOrders, setRecentOrders] = React.useState<RecentOrder[]>([])
   const [recentProducts, setRecentProducts] = React.useState<RecentProduct[]>([])
   const [loading, setLoading] = React.useState(true)
+  const [lastUpdated, setLastUpdated] = React.useState<Date | null>(null)
 
   React.useEffect(() => {
     if (status === "unauthenticated") {
@@ -106,6 +154,7 @@ export default function SellerDashboardPage() {
 
   const fetchDashboardData = async () => {
     try {
+      setLoading(true)
       const [statsRes, ordersRes, productsRes] = await Promise.all([
         fetch("/api/seller/stats"),
         fetch("/api/seller/orders?limit=5"),
@@ -126,6 +175,8 @@ export default function SellerDashboardPage() {
         const data = await productsRes.json()
         setRecentProducts(data.products || [])
       }
+      
+      setLastUpdated(new Date())
     } catch (error) {
       console.error("Error fetching dashboard data:", error)
     } finally {
@@ -133,133 +184,163 @@ export default function SellerDashboardPage() {
     }
   }
 
-  if (loading) {
+  // Calculate max revenue for chart
+  const maxRevenue = stats?.ordersByDay.reduce((max, day) => 
+    Math.max(max, day.revenue), 0) || 0
+
+  // Format date for chart
+  const formatChartDate = (dateStr: string) => {
+    const date = new Date(dateStr)
+    return date.toLocaleDateString("vi-VN", { weekday: "short", day: "numeric" })
+  }
+
+  // Calculate total from orders by day
+  const totalWeekOrders = stats?.ordersByDay.reduce((sum, day) => sum + day.count, 0) || 0
+  const totalWeekRevenue = stats?.ordersByDay.reduce((sum, day) => sum + day.revenue, 0) || 0
+
+  // Get greeting based on time of day
+  const getGreeting = () => {
+    const hour = new Date().getHours()
+    if (hour < 12) return "Chào buổi sáng"
+    if (hour < 18) return "Chào buổi chiều"
+    return "Chào buổi tối"
+  }
+
+  if (loading && !stats) {
     return (
-      <div className="space-y-8">
+      <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="space-y-2">
             <Skeleton className="h-8 w-48" />
             <Skeleton className="h-4 w-64" />
           </div>
-          <Skeleton className="h-10 w-44" />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-36 rounded-2xl" />
+            <Skeleton key={i} className="h-32 rounded-2xl" />
           ))}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Skeleton className="h-72 rounded-2xl" />
-          <Skeleton className="h-72 rounded-2xl" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {[...Array(3)].map((_, i) => (
+            <Skeleton key={i} className="h-64 rounded-2xl" />
+          ))}
         </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Xin chào, {session?.user?.name?.split(" ")[0]}!</h1>
+          <h1 className="text-2xl font-bold">{getGreeting()}, {session?.user?.name?.split(" ")[0]}!</h1>
           <p className="text-muted-foreground mt-1">
-            Đây là tổng quan cửa hàng của bạn hôm nay
+            {lastUpdated && `Cập nhật lần cuối: ${lastUpdated.toLocaleTimeString("vi-VN")}`}
           </p>
         </div>
-        <Link href="/seller/products/new">
-          <Button size="lg" className="gap-2">
-            <Plus className="h-4 w-4" />
-            Đăng sản phẩm mới
+        <div className="flex items-center gap-3">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={fetchDashboardData}
+            className="gap-2"
+          >
+            <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+            Làm mới
           </Button>
-        </Link>
+          <Link href="/seller/products/new">
+            <Button size="sm" className="gap-2">
+              <Plus className="h-4 w-4" />
+              Đăng sản phẩm mới
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="relative overflow-hidden border-0 shadow-sm">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-primary/0" />
-          <CardContent className="p-6 relative">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Revenue Card */}
+        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow">
+          <CardContent className="p-5">
             <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">Sản phẩm đang bán</p>
-                <p className="text-3xl font-bold">{stats?.activeProducts || 0}</p>
-                <div className="flex items-center gap-1">
-                  <Badge variant="secondary" className="text-xs font-normal">
-                    {stats?.pendingProducts || 0} đang chờ duyệt
-                  </Badge>
-                </div>
-              </div>
-              <div className="h-12 w-12 bg-primary/10 rounded-xl flex items-center justify-center">
-                <Package className="h-6 w-6 text-primary" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="relative overflow-hidden border-0 shadow-sm">
-          <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-green-500/0" />
-          <CardContent className="p-6 relative">
-            <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">Đơn hàng mới</p>
-                <p className="text-3xl font-bold">{stats?.pendingOrders || 0}</p>
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <span>{stats?.totalOrders || 0} tổng đơn hàng</span>
-                </div>
-              </div>
-              <div className="h-12 w-12 bg-green-500/10 rounded-xl flex items-center justify-center">
-                <ShoppingBag className="h-6 w-6 text-green-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="relative overflow-hidden border-0 shadow-sm">
-          <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/5 to-yellow-500/0" />
-          <CardContent className="p-6 relative">
-            <div className="flex items-start justify-between">
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <p className="text-sm font-medium text-muted-foreground">Doanh thu</p>
-                <p className="text-3xl font-bold">
-                  {Number(stats?.totalRevenue || 0).toLocaleString("vi-VN")}
+                <p className="text-2xl font-bold">
+                  {(stats?.totalRevenue || 0) >= 1000000 
+                    ? `${((stats?.totalRevenue || 0) / 1000000).toFixed(1)}M`
+                    : (stats?.totalRevenue || 0).toLocaleString("vi-VN")
+                  }đ
                 </p>
-                <div className="flex items-center gap-1 text-xs">
-                  {stats?.revenueChange !== undefined && (
+                <div className="flex items-center gap-1">
+                  {stats?.revenueChange !== undefined && stats.revenueChange >= 0 ? (
                     <>
-                      {stats.revenueChange >= 0 ? (
-                        <Badge variant="secondary" className="text-green-600 bg-green-50 text-xs font-normal gap-1">
-                          <TrendingUp className="h-3 w-3" />
-                          +{stats.revenueChange}%
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary" className="text-red-600 bg-red-50 text-xs font-normal gap-1">
-                          <TrendingDown className="h-3 w-3" />
-                          {stats.revenueChange}%
-                        </Badge>
-                      )}
+                      <ArrowUpRight className="h-3 w-3 text-green-600" />
+                      <span className="text-xs text-green-600">+{stats.revenueChange}%</span>
                     </>
-                  )}
-                  <span className="text-muted-foreground">VNĐ</span>
+                  ) : stats?.revenueChange !== undefined ? (
+                    <>
+                      <ArrowDownRight className="h-3 w-3 text-red-600" />
+                      <span className="text-xs text-red-600">{stats.revenueChange}%</span>
+                    </>
+                  ) : null}
+                  <span className="text-xs text-muted-foreground">tháng này</span>
                 </div>
               </div>
-              <div className="h-12 w-12 bg-yellow-500/10 rounded-xl flex items-center justify-center">
-                <DollarSign className="h-6 w-6 text-yellow-600" />
+              <div className="h-11 w-11 bg-green-500/10 rounded-xl flex items-center justify-center">
+                <DollarSign className="h-5 w-5 text-green-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-0 shadow-sm">
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-purple-500/0" />
-          <CardContent className="p-6 relative">
+        {/* Orders Card */}
+        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow">
+          <CardContent className="p-5">
             <div className="flex items-start justify-between">
-              <div className="space-y-2">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Đơn hàng</p>
+                <p className="text-2xl font-bold">{stats?.totalOrders || 0}</p>
+                <p className="text-xs text-yellow-600">
+                  {stats?.pendingOrders || 0} đơn đang xử lý
+                </p>
+              </div>
+              <div className="h-11 w-11 bg-blue-500/10 rounded-xl flex items-center justify-center">
+                <ShoppingBag className="h-5 w-5 text-blue-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Products Card */}
+        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow">
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Sản phẩm</p>
+                <p className="text-2xl font-bold">{stats?.activeProducts || 0}</p>
+                <p className="text-xs text-muted-foreground">
+                  {stats?.pendingProducts || 0} đang chờ duyệt
+                </p>
+              </div>
+              <div className="h-11 w-11 bg-primary/10 rounded-xl flex items-center justify-center">
+                <Package className="h-5 w-5 text-primary" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Rating Card */}
+        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow">
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between">
+              <div className="space-y-1">
                 <p className="text-sm font-medium text-muted-foreground">Đánh giá</p>
                 <div className="flex items-baseline gap-1">
-                  <p className="text-3xl font-bold">
+                  <p className="text-2xl font-bold">
                     {stats?.avgRating ? Number(stats.avgRating).toFixed(1) : "0.0"}
                   </p>
-                  <span className="text-lg text-muted-foreground">/5</span>
+                  <span className="text-sm text-muted-foreground">/5</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
@@ -268,123 +349,257 @@ export default function SellerDashboardPage() {
                   </span>
                 </div>
               </div>
-              <div className="h-12 w-12 bg-purple-500/10 rounded-xl flex items-center justify-center">
-                <Star className="h-6 w-6 text-purple-600" />
+              <div className="h-11 w-11 bg-amber-500/10 rounded-xl flex items-center justify-center">
+                <Award className="h-5 w-5 text-amber-600" />
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Quick Actions & Recent Activity */}
+      {/* Revenue & Orders Chart */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Quick Actions */}
+        {/* Revenue Chart */}
+        <Card className="border-0 shadow-sm lg:col-span-2">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base font-semibold">Doanh thu 7 ngày gần nhất</CardTitle>
+              <div className="flex items-center gap-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-primary" />
+                  <span className="text-muted-foreground">Đơn hàng</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-green-500" />
+                  <span className="text-muted-foreground">Doanh thu</span>
+                </div>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-4 flex items-center gap-6 text-sm">
+              <div>
+                <span className="text-muted-foreground">Tổng đơn: </span>
+                <span className="font-semibold">{totalWeekOrders}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Tổng doanh thu: </span>
+                <span className="font-semibold text-green-600">
+                  {totalWeekRevenue.toLocaleString("vi-VN")}đ
+                </span>
+              </div>
+            </div>
+            
+            {/* Simple Bar Chart */}
+            <div className="h-36 flex items-end gap-2">
+              {stats?.ordersByDay.map((day, i) => {
+                const heightPercent = maxRevenue > 0 ? (day.revenue / maxRevenue) * 100 : 0
+                const orderHeight = totalWeekOrders > 0 ? (day.count / Math.max(...stats.ordersByDay.map(d => d.count), 1)) * 100 : 0
+                return (
+                  <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                    <div className="w-full flex items-end gap-1 h-28">
+                      <div 
+                        className="flex-1 bg-primary/20 rounded-t transition-all hover:bg-primary/30"
+                        style={{ height: `${Math.max(orderHeight, 5)}%` }}
+                        title={`${day.count} đơn`}
+                      />
+                      <div 
+                        className="flex-1 bg-green-500/60 rounded-t transition-all hover:bg-green-500/80"
+                        style={{ height: `${Math.max(heightPercent, 5)}%` }}
+                        title={`${day.revenue.toLocaleString("vi-VN")}đ`}
+                      />
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {formatChartDate(day.date)}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Performance Metrics */}
         <Card className="border-0 shadow-sm">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-primary" />
-              Thao tác nhanh
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-primary" />
+              Hiệu suất
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <Link href="/seller/products/new" className="block">
-              <div className="flex items-center justify-between p-4 rounded-xl border hover:bg-muted/50 hover:border-primary/30 transition-all group">
-                <div className="flex items-center gap-4">
-                  <div className="h-11 w-11 bg-primary/10 rounded-xl flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                    <Plus className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="font-medium">Đăng sản phẩm mới</p>
-                    <p className="text-sm text-muted-foreground">Thêm sản phẩm vào cửa hàng</p>
-                  </div>
-                </div>
-                <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+          <CardContent className="space-y-4">
+            {/* Success Rate */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground flex items-center gap-2">
+                  <CheckCircle className="h-3 w-3 text-green-500" />
+                  Tỷ lệ thành công
+                </span>
+                <span className="font-semibold">{stats?.successRate || 0}%</span>
               </div>
-            </Link>
+              <Progress value={stats?.successRate || 0} className="h-2 bg-muted [&>div]:bg-green-500" />
+            </div>
 
-            <Link href="/seller/products" className="block">
-              <div className="flex items-center justify-between p-4 rounded-xl border hover:bg-muted/50 hover:border-green-500/30 transition-all group">
-                <div className="flex items-center gap-4">
-                  <div className="h-11 w-11 bg-green-500/10 rounded-xl flex items-center justify-center group-hover:bg-green-500 group-hover:text-white transition-colors">
-                    <Package className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="font-medium">Quản lý sản phẩm</p>
-                    <p className="text-sm text-muted-foreground">Sửa hoặc ẩn sản phẩm</p>
-                  </div>
-                </div>
-                <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-green-500 group-hover:translate-x-1 transition-all" />
+            {/* Cancellation Rate */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground flex items-center gap-2">
+                  <XCircle className="h-3 w-3 text-red-500" />
+                  Tỷ lệ hủy đơn
+                </span>
+                <span className="font-semibold">{stats?.cancellationRate || 0}%</span>
               </div>
-            </Link>
+              <Progress value={stats?.cancellationRate || 0} className="h-2 bg-muted [&>div]:bg-red-500" />
+            </div>
 
-            <Link href="/seller/orders" className="block">
-              <div className="flex items-center justify-between p-4 rounded-xl border hover:bg-muted/50 hover:border-blue-500/30 transition-all group">
-                <div className="flex items-center gap-4">
-                  <div className="h-11 w-11 bg-blue-500/10 rounded-xl flex items-center justify-center group-hover:bg-blue-500 group-hover:text-white transition-colors">
-                    <ShoppingBag className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="font-medium">Xem đơn hàng</p>
-                    <p className="text-sm text-muted-foreground">Cập nhật trạng thái đơn</p>
-                  </div>
-                </div>
-                <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
+            {/* Completed Orders */}
+            <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <span className="text-sm">Đơn hoàn thành</span>
               </div>
-            </Link>
+              <span className="font-bold text-green-600">{stats?.completedOrders || 0}</span>
+            </div>
+
+            {/* Shipping Orders */}
+            <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+              <div className="flex items-center gap-2">
+                <ShoppingBag className="h-4 w-4 text-blue-600" />
+                <span className="text-sm">Đang vận chuyển</span>
+              </div>
+              <span className="font-bold text-blue-600">{stats?.shippingOrders || 0}</span>
+            </div>
+
+            {/* Pending Orders */}
+            <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-yellow-600" />
+                <span className="text-sm">Chờ xử lý</span>
+              </div>
+              <span className="font-bold text-yellow-600">{stats?.pendingOrders || 0}</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Second Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Top Products */}
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-semibold flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-green-600" />
+                Sản phẩm bán chạy
+              </span>
+              <Link href="/seller/products">
+                <Button variant="ghost" size="sm" className="h-auto p-1 text-xs">
+                  Xem tất cả
+                </Button>
+              </Link>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!stats?.topProducts || stats.topProducts.length === 0 ? (
+              <div className="text-center py-8">
+                <div className="h-12 w-12 bg-muted rounded-xl flex items-center justify-center mx-auto mb-3">
+                  <Package className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <p className="text-sm text-muted-foreground">Chưa có sản phẩm nào được bán</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {stats.topProducts.filter(Boolean).map((product: any, index: number) => (
+                  <Link key={product.id} href={`/seller/products/${product.slug}/edit`} className="block">
+                    <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors group">
+                      <div className="h-10 w-10 bg-muted rounded-lg overflow-hidden relative shrink-0">
+                        {product.images && product.images[0] ? (
+                          <Image
+                            src={product.images[0].url}
+                            alt={product.title}
+                            fill
+                            className="object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Package className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
+                          {product.title}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {product.salesCount} đã bán
+                        </p>
+                      </div>
+                      <span className="text-xs font-semibold text-green-600">
+                        #{index + 1}
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
         {/* Recent Orders */}
         <Card className="border-0 shadow-sm lg:col-span-2">
-          <CardHeader className="flex flex-row items-center justify-between pb-4">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <ShoppingBag className="h-5 w-5 text-primary" />
-              Đơn hàng gần đây
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-semibold flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <ShoppingBag className="h-4 w-4 text-primary" />
+                Đơn hàng gần đây
+              </span>
+              <Link href="/seller/orders">
+                <Button variant="ghost" size="sm" className="h-auto p-1 text-xs">
+                  Xem tất cả
+                </Button>
+              </Link>
             </CardTitle>
-            <Link href="/seller/orders">
-              <Button variant="ghost" size="sm" className="gap-1">
-                Xem tất cả
-                <ArrowRight className="h-3 w-3" />
-              </Button>
-            </Link>
           </CardHeader>
           <CardContent>
             {recentOrders.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="h-16 w-16 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <ShoppingBag className="h-8 w-8 text-muted-foreground" />
+              <div className="text-center py-8">
+                <div className="h-12 w-12 bg-muted rounded-xl flex items-center justify-center mx-auto mb-3">
+                  <ShoppingBag className="h-6 w-6 text-muted-foreground" />
                 </div>
-                <p className="text-muted-foreground">Chưa có đơn hàng nào</p>
+                <p className="text-sm text-muted-foreground">Chưa có đơn hàng nào</p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {recentOrders.map((order) => {
-                  const status = statusConfig[order.status] || statusConfig.PENDING_PAYMENT
+                  const statusInfo = statusConfig[order.status] || statusConfig.PENDING_PAYMENT
                   return (
                     <Link key={order.id} href={`/seller/orders/${order.id}`} className="block">
-                      <div className="flex items-center gap-4 p-4 rounded-xl border hover:bg-muted/50 hover:border-primary/20 transition-all group">
-                        <Avatar className="h-10 w-10">
-                          <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                      <div className="flex items-center gap-3 p-3 rounded-xl border hover:bg-muted/50 hover:border-primary/20 transition-all group">
+                        <Avatar className="h-9 w-9">
+                          <AvatarFallback className="bg-primary/10 text-primary font-semibold text-xs">
                             {order.buyer.name.charAt(0)}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="font-semibold text-sm">{order.orderCode}</span>
-                            <Badge className={cn("text-xs border-0", status.bg, status.color)}>
-                              {status.label}
+                            <Badge className={cn("text-xs border-0", statusInfo.bg, statusInfo.color)}>
+                              {statusInfo.label}
                             </Badge>
                           </div>
-                          <p className="text-sm text-muted-foreground truncate">
+                          <p className="text-xs text-muted-foreground truncate">
                             {order.buyer.name} • {order.itemCount} sản phẩm
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="font-semibold text-primary">
+                          <p className="font-semibold text-sm text-primary">
                             {order.totalAmount.toLocaleString("vi-VN")}đ
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {new Date(order.createdAt).toLocaleDateString("vi-VN")}
+                            {new Date(order.createdAt).toLocaleDateString("vi-VN", {
+                              day: "2-digit",
+                              month: "2-digit",
+                            })}
                           </p>
                         </div>
                       </div>
@@ -397,146 +612,154 @@ export default function SellerDashboardPage() {
         </Card>
       </div>
 
-      {/* Recent Products & Status Overview */}
+      {/* Third Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent Products */}
-        <Card className="border-0 shadow-sm lg:col-span-2">
-          <CardHeader className="flex flex-row items-center justify-between pb-4">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Package className="h-5 w-5 text-primary" />
-              Sản phẩm gần đây
+        {/* Orders by Status */}
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-semibold flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <BarChart3 className="h-4 w-4 text-primary" />
+                Đơn theo trạng thái
+              </span>
             </CardTitle>
-            <Link href="/seller/products">
-              <Button variant="ghost" size="sm" className="gap-1">
-                Xem tất cả
-                <ArrowRight className="h-3 w-3" />
-              </Button>
-            </Link>
           </CardHeader>
           <CardContent>
-            {recentProducts.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="h-16 w-16 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <Package className="h-8 w-8 text-muted-foreground" />
-                </div>
-                <p className="text-muted-foreground mb-4">Chưa có sản phẩm nào</p>
-                <Link href="/seller/products/new">
-                  <Button size="sm" className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    Đăng sản phẩm mới
-                  </Button>
-                </Link>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-                {recentProducts.map((product) => (
-                  <Link
-                    key={product.id}
-                    href={`/seller/products/${product.slug}/edit`}
-                    className="group"
-                  >
-                    <div className="rounded-xl border overflow-hidden hover:shadow-lg hover:border-primary/30 transition-all">
-                      <div className="aspect-square bg-muted relative">
-                        {product.images && product.images.length > 0 ? (
-                          <Image
-                            src={product.images[0].url}
-                            alt={product.title}
-                            fill
-                            className="object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Package className="h-8 w-8 text-muted-foreground" />
-                          </div>
-                        )}
-                        <Badge
-                          className={cn(
-                            "absolute top-2 right-2 text-xs border-0",
-                            product.status === "ACTIVE" && "bg-green-500",
-                            product.status === "PENDING" && "bg-yellow-500",
-                            product.status !== "ACTIVE" && product.status !== "PENDING" && "bg-gray-500"
-                          )}
-                        >
-                          {product.status === "ACTIVE"
-                            ? "Đang bán"
-                            : product.status === "PENDING"
-                            ? "Chờ duyệt"
-                            : product.status}
-                        </Badge>
+            <div className="space-y-3">
+              {Object.entries(stats?.ordersByStatus || {})
+                .filter(([_, count]) => count > 0)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 6)
+                .map(([status, count]) => {
+                  const config = statusConfig[status] || { label: status, color: "text-gray-600", bg: "bg-gray-50" }
+                  const percent = stats?.totalOrders ? Math.round((count / stats.totalOrders) * 100) : 0
+                  return (
+                    <div key={status} className="space-y-1">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className={config.color}>{config.label}</span>
+                        <span className="font-medium">{count}</span>
                       </div>
-                      <div className="p-3 space-y-1">
-                        <p className="font-medium text-sm truncate group-hover:text-primary transition-colors">
-                          {product.title}
-                        </p>
-                        <div className="flex items-center justify-between">
-                          <p className="text-primary font-semibold text-sm">
-                            {product.price.toLocaleString("vi-VN")}đ
-                          </p>
-                          {product.viewCount !== undefined && (
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                              <Eye className="h-3 w-3" />
-                              {product.viewCount}
-                            </div>
-                          )}
-                        </div>
+                      <div className="h-2 bg-muted rounded-full overflow-hidden">
+                        <div 
+                          className={cn("h-full rounded-full transition-all", statusColors[status] || "bg-gray-500")}
+                          style={{ width: `${percent}%` }}
+                        />
                       </div>
                     </div>
-                  </Link>
+                  )
+                })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Recent Reviews */}
+        <Card className="border-0 shadow-sm lg:col-span-2">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-semibold flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <ThumbsUp className="h-4 w-4 text-amber-500" />
+                Đánh giá gần đây
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!stats?.recentReviews || stats.recentReviews.length === 0 ? (
+              <div className="text-center py-8">
+                <div className="h-12 w-12 bg-muted rounded-xl flex items-center justify-center mx-auto mb-3">
+                  <Star className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <p className="text-sm text-muted-foreground">Chưa có đánh giá nào</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {stats.recentReviews.map((review) => (
+                  <div key={review.id} className="flex items-start gap-3 p-3 rounded-xl border">
+                    <Avatar className="h-9 w-9 shrink-0">
+                      <AvatarFallback className="bg-amber-100 text-amber-700 font-semibold text-xs">
+                        {review.reviewer.name.charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-medium text-sm">{review.reviewer.name}</span>
+                        <div className="flex items-center">
+                          {[...Array(5)].map((_, i) => (
+                            <Star
+                              key={i}
+                              className={cn(
+                                "h-3 w-3",
+                                i < review.rating ? "fill-amber-400 text-amber-400" : "text-gray-300"
+                              )}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground mb-1 truncate">
+                        {review.product.title}
+                      </p>
+                      {review.comment && (
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          "{review.comment}"
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 ))}
               </div>
             )}
           </CardContent>
         </Card>
+      </div>
 
-        {/* Status Overview */}
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-primary" />
-              Tổng quan
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Đang bán</span>
-                  <span className="font-semibold">{stats?.activeProducts || 0}</span>
+      {/* Quick Actions */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Link href="/seller/products/new" className="block">
+          <Card className="border-0 shadow-sm hover:shadow-md hover:border-primary/30 transition-all group cursor-pointer">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 bg-primary/10 rounded-xl flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                  <Plus className="h-6 w-6 text-primary group-hover:text-primary-foreground" />
                 </div>
-                <Progress value={stats?.totalProducts ? (stats.activeProducts / stats.totalProducts) * 100 : 0} className="h-2 bg-green-100 [&>div]:bg-green-500" />
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Chờ duyệt</span>
-                  <span className="font-semibold">{stats?.pendingProducts || 0}</span>
+                <div>
+                  <p className="font-semibold group-hover:text-primary transition-colors">Đăng sản phẩm mới</p>
+                  <p className="text-sm text-muted-foreground">Thêm sản phẩm vào cửa hàng</p>
                 </div>
-                <Progress value={stats?.totalProducts ? (stats.pendingProducts / stats.totalProducts) * 100 : 0} className="h-2 bg-yellow-100 [&>div]:bg-yellow-500" />
               </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Đã bán</span>
-                  <span className="font-semibold">{stats?.soldProducts || 0}</span>
-                </div>
-                <Progress value={stats?.totalProducts ? (stats.soldProducts / stats.totalProducts) * 100 : 0} className="h-2 bg-blue-100 [&>div]:bg-blue-500" />
-              </div>
-            </div>
+            </CardContent>
+          </Card>
+        </Link>
 
-            <div className="pt-4 border-t space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Tổng sản phẩm</span>
-                <span className="font-semibold">{stats?.totalProducts || 0}</span>
+        <Link href="/seller/products" className="block">
+          <Card className="border-0 shadow-sm hover:shadow-md hover:border-green-500/30 transition-all group cursor-pointer">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 bg-green-500/10 rounded-xl flex items-center justify-center group-hover:bg-green-500 group-hover:text-white transition-colors">
+                  <Package className="h-6 w-6 text-green-600 group-hover:text-white" />
+                </div>
+                <div>
+                  <p className="font-semibold group-hover:text-green-600 transition-colors">Quản lý sản phẩm</p>
+                  <p className="text-sm text-muted-foreground">Sửa hoặc ẩn sản phẩm</p>
+                </div>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Đơn hoàn thành</span>
-                <span className="font-semibold">{stats?.completedOrders || 0}</span>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/seller/orders" className="block">
+          <Card className="border-0 shadow-sm hover:shadow-md hover:border-blue-500/30 transition-all group cursor-pointer">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 bg-blue-500/10 rounded-xl flex items-center justify-center group-hover:bg-blue-500 group-hover:text-white transition-colors">
+                  <ShoppingBag className="h-6 w-6 text-blue-600 group-hover:text-white" />
+                </div>
+                <div>
+                  <p className="font-semibold group-hover:text-blue-600 transition-colors">Xem đơn hàng</p>
+                  <p className="text-sm text-muted-foreground">Cập nhật trạng thái đơn</p>
+                </div>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Đơn đang xử lý</span>
-                <span className="font-semibold">{stats?.pendingOrders || 0}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
     </div>
   )

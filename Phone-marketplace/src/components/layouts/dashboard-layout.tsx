@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useSession } from "next-auth/react"
@@ -10,7 +10,6 @@ import {
   ChevronRight,
   LogOut,
   Menu,
-  X,
   Bell,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -35,32 +34,43 @@ interface NavGroup {
 interface DashboardLayoutProps {
   children: React.ReactNode
   navGroups: NavGroup[]
+  pendingCounts?: {
+    sellers?: number
+    products?: number
+    returns?: number
+    complaints?: number
+    violations?: number
+  }
 }
 
-export function DashboardLayout({ children, navGroups }: DashboardLayoutProps) {
-  const [isCollapsed, setIsCollapsed] = useState(false)
-  const [isMobileOpen, setIsMobileOpen] = useState(false)
-  const pathname = usePathname()
-  const { data: session } = useSession()
-  const [mounted, setMounted] = useState(false)
+interface NavContentProps {
+  collapsed: boolean
+  navGroups: NavGroup[]
+  pathname: string
+  onToggleCollapse: () => void
+  pendingCounts?: DashboardLayoutProps["pendingCounts"]
+  isMobile?: boolean
+}
 
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+function getBadgeCount(item: NavItem, pendingCounts?: DashboardLayoutProps["pendingCounts"]): number | undefined {
+  if (pendingCounts === undefined) return item.badge
 
+  const hrefLower = item.href.toLowerCase()
+  if (hrefLower.includes("sellers")) return pendingCounts.sellers
+  if (hrefLower.includes("products")) return pendingCounts.products
+  if (hrefLower.includes("returns") || hrefLower.includes("hoan")) return pendingCounts.returns
+  if (hrefLower.includes("complaints") || hrefLower.includes("khieu-nai")) return pendingCounts.complaints
+  if (hrefLower.includes("violations") || hrefLower.includes("vi-pham")) return pendingCounts.violations
+
+  return item.badge
+}
+
+function NavContent({ collapsed, navGroups, pathname, onToggleCollapse, pendingCounts, isMobile }: NavContentProps) {
   const handleSignOut = () => {
     signOut({ callbackUrl: "/" })
   }
 
-  const getPageTitle = () => {
-    const allItems = navGroups.flatMap((g) => g.items)
-    const currentItem = allItems.find(
-      (item) => pathname === item.href || pathname.startsWith(item.href + "/")
-    )
-    return currentItem?.label || "Dashboard"
-  }
-
-  const NavContent = ({ collapsed = false }: { collapsed?: boolean }) => (
+  const navContent = (
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className={cn(
@@ -106,6 +116,7 @@ export function DashboardLayout({ children, navGroups }: DashboardLayoutProps) {
                 {group.items.map((item) => {
                   const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
                   const Icon = item.icon
+                  const badgeCount = getBadgeCount(item, pendingCounts)
 
                   const linkContent = (
                     <Link
@@ -122,22 +133,22 @@ export function DashboardLayout({ children, navGroups }: DashboardLayoutProps) {
                       {!collapsed && (
                         <>
                           <span className="text-sm font-medium flex-1">{item.label}</span>
-                          {item.badge !== undefined && item.badge > 0 && (
+                          {badgeCount !== undefined && badgeCount > 0 && (
                             <span
                               className={cn(
                                 "text-xs px-2 py-0.5 rounded-full font-medium",
                                 isActive
                                   ? "bg-primary-foreground/20 text-primary-foreground"
-                                  : "bg-primary/10 text-primary"
+                                  : "bg-red-500 text-white"
                               )}
                             >
-                              {item.badge > 99 ? "99+" : item.badge}
+                              {badgeCount > 99 ? "99+" : badgeCount}
                             </span>
                           )}
                         </>
                       )}
-                      {collapsed && item.badge !== undefined && item.badge > 0 && (
-                        <span className="absolute top-1 right-1 h-2 w-2 bg-primary rounded-full" />
+                      {collapsed && badgeCount !== undefined && badgeCount > 0 && (
+                        <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full" />
                       )}
                     </Link>
                   )
@@ -147,7 +158,14 @@ export function DashboardLayout({ children, navGroups }: DashboardLayoutProps) {
                       <Tooltip key={item.href} delayDuration={0}>
                         <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
                         <TooltipContent side="right" className="font-medium">
-                          {item.label}
+                          <div className="flex items-center gap-2">
+                            <span>{item.label}</span>
+                            {badgeCount !== undefined && badgeCount > 0 && (
+                              <span className="px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full">
+                                {badgeCount}
+                              </span>
+                            )}
+                          </div>
                         </TooltipContent>
                       </Tooltip>
                     )
@@ -175,22 +193,24 @@ export function DashboardLayout({ children, navGroups }: DashboardLayoutProps) {
         )}
 
         {/* Collapse Toggle - Desktop */}
-        <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className={cn(
-            "hidden lg:flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors",
-            collapsed && "justify-center"
-          )}
-        >
-          {collapsed ? (
-            <ChevronRight className="h-5 w-5" />
-          ) : (
-            <>
-              <ChevronLeft className="h-5 w-5" />
-              <span className="text-sm font-medium">Thu gọn</span>
-            </>
-          )}
-        </button>
+        {!isMobile && (
+          <button
+            onClick={onToggleCollapse}
+            className={cn(
+              "hidden lg:flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors",
+              collapsed && "justify-center"
+            )}
+          >
+            {collapsed ? (
+              <ChevronRight className="h-5 w-5" />
+            ) : (
+              <>
+                <ChevronLeft className="h-5 w-5" />
+                <span className="text-sm font-medium">Thu gọn</span>
+              </>
+            )}
+          </button>
+        )}
 
         {/* Sign Out */}
         <button
@@ -206,6 +226,41 @@ export function DashboardLayout({ children, navGroups }: DashboardLayoutProps) {
       </div>
     </div>
   )
+
+  // Wrap with TooltipProvider if there are collapsed items
+  const hasCollapsedItems = navGroups.some(group =>
+    group.items.some(item => getBadgeCount(item, pendingCounts))
+  )
+
+  if (collapsed && hasCollapsedItems) {
+    return <TooltipProvider>{navContent}</TooltipProvider>
+  }
+
+  return navContent
+}
+
+export function DashboardLayout({ children, navGroups, pendingCounts }: DashboardLayoutProps) {
+  const [isCollapsed, setIsCollapsed] = React.useState(false)
+  const [isMobileOpen, setIsMobileOpen] = React.useState(false)
+  const pathname = usePathname()
+  const { data: session } = useSession()
+  const [mounted, setMounted] = React.useState(
+    typeof window !== "undefined"
+  )
+
+  React.useEffect(() => {
+    if (!mounted) {
+      setMounted(true)
+    }
+  }, [mounted])
+
+  const getPageTitle = () => {
+    const allItems = navGroups.flatMap((g) => g.items)
+    const currentItem = allItems.find(
+      (item) => pathname === item.href || pathname.startsWith(item.href + "/")
+    )
+    return currentItem?.label || "Dashboard"
+  }
 
   if (!mounted) {
     return (
@@ -230,7 +285,13 @@ export function DashboardLayout({ children, navGroups }: DashboardLayoutProps) {
           isCollapsed ? "w-[72px]" : "w-64"
         )}
       >
-        <NavContent collapsed={isCollapsed} />
+        <NavContent
+          collapsed={isCollapsed}
+          navGroups={navGroups}
+          pathname={pathname}
+          onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
+          pendingCounts={pendingCounts}
+        />
       </aside>
 
       {/* Mobile Sidebar */}
@@ -240,7 +301,14 @@ export function DashboardLayout({ children, navGroups }: DashboardLayoutProps) {
             <SheetTitle>Menu</SheetTitle>
           </SheetHeader>
           <div className="bg-sidebar h-full">
-            <NavContent />
+            <NavContent
+              collapsed={false}
+              navGroups={navGroups}
+              pathname={pathname}
+              onToggleCollapse={() => {}}
+              pendingCounts={pendingCounts}
+              isMobile
+            />
           </div>
         </SheetContent>
       </Sheet>

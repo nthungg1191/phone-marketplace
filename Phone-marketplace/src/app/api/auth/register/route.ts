@@ -3,11 +3,21 @@ import bcrypt from "bcryptjs"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 
+const VIETNAM_PHONE_REGEX = /^(0[1-9][0-9]{8}|0[1-9][0-9]{7})$/
 const registerSchema = z.object({
-  email: z.string().email("Email không hợp lệ"),
+  email: z
+    .string()
+    .min(1, "Vui lòng nhập email")
+    .regex(/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/, "Email không hợp lệ"),
   password: z.string().min(6, "Mật khẩu phải có ít nhất 6 ký tự"),
   name: z.string().min(2, "Tên phải có ít nhất 2 ký tự"),
-  phone: z.string().optional(),
+  phone: z
+    .string()
+    .refine(
+      (val) => !val || VIETNAM_PHONE_REGEX.test(val),
+      { message: "Số điện thoại không hợp lệ (VD: 0912345678)" }
+    )
+    .optional(),
 })
 
 export async function POST(request: Request) {
