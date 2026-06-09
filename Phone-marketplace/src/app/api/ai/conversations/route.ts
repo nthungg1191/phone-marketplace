@@ -16,10 +16,11 @@ export async function GET() {
     const conversations = await AIShoppingService.getConversations(session.user.id)
 
     return NextResponse.json({ conversations })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('AI Conversations API error:', error)
+    const message = error instanceof Error ? error.message : 'Lỗi server'
     return NextResponse.json(
-      { error: error.message || 'Lỗi server' },
+      { error: message },
       { status: 500 }
     )
   }

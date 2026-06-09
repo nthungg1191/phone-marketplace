@@ -37,10 +37,11 @@ export async function POST(request: NextRequest) {
     )
 
     return NextResponse.json(response)
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('AI Chat API error:', error)
+    const message = error instanceof Error ? error.message : 'Lỗi server. Vui lòng thử lại.'
     return NextResponse.json(
-      { error: error.message || 'Lỗi server. Vui lòng thử lại.' },
+      { error: message },
       { status: 500 }
     )
   }

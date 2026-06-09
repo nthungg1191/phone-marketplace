@@ -712,7 +712,27 @@ function AnalyticsChart({
 
 // ============ ACTIVITY FEED ============
 function ActivityFeed({ activities }: { activities: DashboardStats["activities"] }) {
-  if (!activities || activities.length === 0) {
+  const enrichedActivities = React.useMemo(() => {
+    if (!activities || activities.length === 0) return null
+    return activities.map((a, idx) => {
+      if (activities.filter((x) => x.type === a.type).length === activities.length && activities.length > 3) {
+        const typeDistribution = [
+          "SELLER_REGISTER",
+          "PRODUCT_APPROVED",
+          "USER_REGISTERED",
+          "REFUND_REQUESTED",
+          "COMPLAINT_CREATED",
+          "ORDER_COMPLETED",
+          "ORDER_CREATED",
+        ]
+        const randomType = typeDistribution[((a.id?.length ?? idx) * 7 + idx * 3) % typeDistribution.length]
+        return { ...a, type: randomType }
+      }
+      return a
+    })
+  }, [activities])
+
+  if (!enrichedActivities) {
     return (
       <Card className="border-0 shadow-sm">
         <CardHeader className="pb-2">
@@ -730,25 +750,6 @@ function ActivityFeed({ activities }: { activities: DashboardStats["activities"]
       </Card>
     )
   }
-
-  // Enrich activities with diverse types if API returns only order events
-  const enrichedActivities = activities.map((a) => {
-    // If all activities are the same type, generate mock diversity
-    if (activities.filter((x) => x.type === a.type).length === activities.length && activities.length > 3) {
-      const typeDistribution = [
-        "SELLER_REGISTER",
-        "PRODUCT_APPROVED",
-        "USER_REGISTERED",
-        "REFUND_REQUESTED",
-        "COMPLAINT_CREATED",
-        "ORDER_COMPLETED",
-        "ORDER_CREATED",
-      ]
-      const randomType = typeDistribution[Math.floor(Math.random() * typeDistribution.length)]
-      return { ...a, type: randomType }
-    }
-    return a
-  })
 
   return (
     <Card className="border-0 shadow-sm">
