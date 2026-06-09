@@ -114,22 +114,56 @@ export class VertexAIService {
         throw new Error('VERTEX_AI_PROJECT_ID is not set')
       }
 
-      let credentials: object | undefined
       const credJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
+
       if (credJson) {
         try {
-          credentials = JSON.parse(credJson)
-        } catch {
-          console.warn('Failed to parse GOOGLE_APPLICATION_CREDENTIALS_JSON, using default credentials')
-        }
-      }
+          const credData = JSON.parse(credJson)
 
-      this.instance = new GoogleGenAI({
-        vertexai: true,
-        project: projectId,
-        location,
-        ...(credentials ? { credentials } : {}),
-      })
+          const getAccessToken = async () => {
+            const jwt = await import('jsonwebtoken')
+            const now = Math.floor(Date.now() / 1000)
+            const payload = {
+              iss: credData.client_email,
+              scope: 'https://www.googleapis.com/auth/cloud-platform',
+              aud: 'https://oauth2.googleapis.com/token',
+              iat: now,
+              exp: now + 3600,
+            }
+            const token = jwt.sign(payload, credData.private_key, {
+              algorithm: 'RS256',
+              header: { alg: 'RS256', typ: 'JWT' },
+            })
+            return { token, expires_at: new Date((now + 3600) * 1000) }
+          }
+
+          const authClient = {
+            getAccessToken,
+            getRequestHeaders: async () => ({ 'Authorization': 'Bearer placeholder' }),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          } as any
+
+          this.instance = new GoogleGenAI({
+            vertexai: true,
+            project: projectId,
+            location,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            googleAuthOptions: { authClient } as any,
+          })
+        } catch {
+          this.instance = new GoogleGenAI({
+            vertexai: true,
+            project: projectId,
+            location,
+          })
+        }
+      } else {
+        this.instance = new GoogleGenAI({
+          vertexai: true,
+          project: projectId,
+          location,
+        })
+      }
     }
 
     return this.instance
