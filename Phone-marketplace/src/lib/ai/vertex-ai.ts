@@ -116,7 +116,7 @@ export class VertexAIService {
 
       const credJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
 
-      if (credJson) {
+      if (credJson?.trim()) {
         try {
           const credData = JSON.parse(credJson)
 
