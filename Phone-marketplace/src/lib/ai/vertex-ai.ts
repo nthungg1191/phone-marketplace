@@ -114,10 +114,21 @@ export class VertexAIService {
         throw new Error('VERTEX_AI_PROJECT_ID is not set')
       }
 
+      let credentials: object | undefined
+      const credJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
+      if (credJson) {
+        try {
+          credentials = JSON.parse(credJson)
+        } catch {
+          console.warn('Failed to parse GOOGLE_APPLICATION_CREDENTIALS_JSON, using default credentials')
+        }
+      }
+
       this.instance = new GoogleGenAI({
         vertexai: true,
         project: projectId,
         location,
+        ...(credentials ? { credentials } : {}),
       })
     }
 
