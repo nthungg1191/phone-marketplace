@@ -131,7 +131,7 @@ export class VertexAIService {
             const normalizedKey = privateKey
               .replace(/\\n/g, '\n')
               .replace(/\n-----BEGIN/, '\n-----BEGIN')
-              .replace(/-----END[^\n]+\n$/, (m) => m.trim())
+              .replace(/-----END[^\n]+\n$/, (m: string) => m.trim())
 
             const now = Math.floor(Date.now() / 1000)
             const payload = {
