@@ -1,4 +1,5 @@
 import { GoogleGenAI } from '@google/genai'
+import jwt from 'jsonwebtoken'
 import type { ConversationState } from './slot-extractor'
 
 const SYSTEM_PROMPT = `Bạn là tư vấn viên thân thiện của HNT Marketplace — nền tảng mua bán điện thoại cũ uy tín.
@@ -121,7 +122,17 @@ export class VertexAIService {
           const credData = JSON.parse(credJson)
 
           const getAccessToken = async () => {
-            const jwt = await import('jsonwebtoken')
+            const privateKey = credData.private_key
+            if (!privateKey) {
+              throw new Error('private_key not found in service account credentials')
+            }
+
+            // Normalize newlines — environment variable may escape \n as literal backslash-n
+            const normalizedKey = privateKey
+              .replace(/\\n/g, '\n')
+              .replace(/\n-----BEGIN/, '\n-----BEGIN')
+              .replace(/-----END[^\n]+\n$/, (m) => m.trim())
+
             const now = Math.floor(Date.now() / 1000)
             const payload = {
               iss: credData.client_email,
@@ -130,9 +141,8 @@ export class VertexAIService {
               iat: now,
               exp: now + 3600,
             }
-            const token = jwt.sign(payload, credData.private_key, {
+            const token = jwt.sign(payload, normalizedKey, {
               algorithm: 'RS256',
-              header: { alg: 'RS256', typ: 'JWT' },
             })
             return { token, expires_at: new Date((now + 3600) * 1000) }
           }

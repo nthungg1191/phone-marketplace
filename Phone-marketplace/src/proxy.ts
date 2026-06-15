@@ -1,27 +1,39 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { getToken } from "next-auth/jwt"
+import { auth } from "@/lib/auth"
 
-const PUBLIC_PREFIXES = ["/", "/products", "/brands", "/auth"]
-const PROTECTED_PREFIXES = ["/profile", "/orders", "/cart", "/wishlist", "/notifications", "/messages", "/settings", "/seller/register"]
-const SELLER_PREFIXES = ["/seller/dashboard", "/seller/products", "/seller/orders"]
+const PUBLIC_PREFIXES = ["/", "/products", "/brands", "/stores", "/auth", "/search", "/cart", "/checkout"]
+
+const PROTECTED_PREFIXES = ["/profile", "/orders", "/wishlist", "/notifications", "/messages", "/settings", "/addresses"]
+
+const SELLER_PREFIXES = ["/seller"]
+
 const ADMIN_PREFIXES = ["/admin"]
 
-function matchesAnyRoute(path: string, prefixes: string[]): boolean {
+function matchesRoute(path: string, prefixes: string[]): boolean {
   return prefixes.some(
     (prefix) => path === prefix || path.startsWith(prefix + "/")
   )
 }
 
-export default async function middleware(req: NextRequest) {
+export default async function proxy(req: NextRequest) {
   const { pathname, searchParams } = req.nextUrl
+  
+  // Use NextAuth's auth() function - Edge compatible
+  const session = await auth()
+  
+  const isLoggedIn = !!session?.user
+  const userRole = session?.user?.role as string | undefined
+  const sellerStatus = session?.user?.sellerStatus as string | undefined
+  const isLocked = session?.user?.isLocked as boolean | undefined
 
-  const token = await getToken({ req, secret: process.env.AUTH_SECRET })
-  const isLoggedIn = !!token
-  const userRole = token?.role as string | undefined
-  const sellerStatus = token?.sellerStatus as string | undefined
+  // If session exists but user is locked, redirect to login
+  if (isLoggedIn && isLocked) {
+    return NextResponse.redirect(new URL("/auth/login?locked=1", req.url))
+  }
 
-  if (matchesAnyRoute(pathname, PUBLIC_PREFIXES)) {
+  // Public routes - allow access
+  if (matchesRoute(pathname, PUBLIC_PREFIXES)) {
     if (isLoggedIn && pathname.startsWith("/auth/login")) {
       const callbackUrl = searchParams.get("callbackUrl")
       return NextResponse.redirect(new URL(callbackUrl || "/", req.url))
@@ -29,18 +41,34 @@ export default async function middleware(req: NextRequest) {
     return NextResponse.next()
   }
 
-  if (matchesAnyRoute(pathname, PROTECTED_PREFIXES) && !isLoggedIn) {
+  // Protected routes - require login
+  if (matchesRoute(pathname, PROTECTED_PREFIXES) && !isLoggedIn) {
     const loginUrl = new URL("/auth/login", req.url)
-    loginUrl.searchParams.set("callbackUrl", pathname + searchParams)
+    const callback = pathname + (searchParams.toString() ? "?" + searchParams.toString() : "")
+    loginUrl.searchParams.set("callbackUrl", callback)
     return NextResponse.redirect(loginUrl)
   }
 
-  if (matchesAnyRoute(pathname, ADMIN_PREFIXES) && userRole !== "ADMIN") {
-    return NextResponse.redirect(new URL("/", req.url))
+  // Admin routes - require ADMIN role
+  if (matchesRoute(pathname, ADMIN_PREFIXES)) {
+    if (userRole !== "ADMIN") {
+      return NextResponse.redirect(new URL("/", req.url))
+    }
+    return NextResponse.next()
   }
 
-  if (matchesAnyRoute(pathname, SELLER_PREFIXES) && (userRole !== "SELLER" || sellerStatus !== "APPROVED")) {
-    return NextResponse.redirect(new URL("/", req.url))
+  // Seller routes - require SELLER role
+  if (matchesRoute(pathname, SELLER_PREFIXES)) {
+    if (userRole !== "SELLER" && userRole !== "ADMIN") {
+      return NextResponse.redirect(new URL("/", req.url))
+    }
+    
+    // Seller approval check for product creation
+    if (pathname.startsWith("/seller/products/new") && sellerStatus !== "APPROVED" && userRole !== "ADMIN") {
+      return NextResponse.redirect(new URL("/", req.url))
+    }
+    
+    return NextResponse.next()
   }
 
   return NextResponse.next()
