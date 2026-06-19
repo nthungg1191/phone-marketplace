@@ -135,6 +135,7 @@ export function Header() {
             ? "bg-background/95 backdrop-blur-md border-b shadow-sm"
             : "bg-background border-b"
         )}
+        style={{ viewTransitionName: "site-header" }}
       >
         <div className="container mx-auto px-4">
           <div className="flex h-16 items-center justify-between gap-4">

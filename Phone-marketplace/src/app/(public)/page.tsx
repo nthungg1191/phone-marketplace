@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { DirectionalTransition } from "@/components/shared/directional-transition"
 
 async function getFeaturedProducts() {
   try {
@@ -101,7 +102,8 @@ export default async function HomePage() {
   ])
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <DirectionalTransition>
+      <div className="flex flex-col min-h-screen">
       {/* Hero Section */}
       <section className="relative overflow-hidden">
         {/* Background Image Layer */}
@@ -157,14 +159,14 @@ export default async function HomePage() {
 
             {/* CTA Buttons */}
             <div className="flex flex-wrap gap-4 animate-fade-up">
-              <Link href="/products">
+              <Link href="/products" transitionTypes={["nav-forward"]}>
                 <Button size="lg" className="bg-white text-slate-900 hover:bg-blue-50 shadow-2xl shadow-primary/30 h-12 px-8 font-semibold group">
                   <Smartphone className="h-5 w-5 mr-2 group-hover:scale-110 transition-transform" />
                   Khám phá sản phẩm
                 </Button>
               </Link>
               {!session && (
-                <Link href="/auth/register">
+                <Link href="/auth/register" transitionTypes={["nav-forward"]}>
                   <Button size="lg" variant="outline" className="bg-white/10 backdrop-blur border-white/20 text-white hover:bg-white/20 h-12 px-8 font-semibold">
                     Đăng ký ngay
                     <ArrowRight className="h-4 w-4 ml-2" />
@@ -257,7 +259,7 @@ export default async function HomePage() {
                 <h2 className="text-2xl font-bold">Danh mục</h2>
                 <p className="text-muted-foreground text-sm mt-1">Tìm kiếm theo nhu cầu của bạn</p>
               </div>
-              <Link href="/categories" className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
+              <Link href="/categories" transitionTypes={["nav-forward"]} className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
                 Xem tất cả
                 <ArrowRight className="h-4 w-4" />
               </Link>
@@ -269,6 +271,7 @@ export default async function HomePage() {
                   <Link
                     key={category.id}
                     href={`/categories/${category.slug}`}
+                    transitionTypes={["nav-forward"]}
                     className="group p-6 bg-background border rounded-2xl hover:shadow-lg hover:border-primary/30 transition-all text-center animate-fade-up"
                     style={{ animationDelay: `${index * 50}ms` }}
                   >
@@ -293,7 +296,7 @@ export default async function HomePage() {
                 <h2 className="text-2xl font-bold">Thương hiệu</h2>
                 <p className="text-muted-foreground text-sm mt-1">Các thương hiệu nổi tiếng</p>
               </div>
-              <Link href="/brands" className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
+              <Link href="/brands" transitionTypes={["nav-forward"]} className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
                 Xem tất cả
                 <ArrowRight className="h-4 w-4" />
               </Link>
@@ -303,6 +306,7 @@ export default async function HomePage() {
                 <Link
                   key={brand.id}
                   href={`/brands/${brand.slug}`}
+                  transitionTypes={["nav-forward"]}
                   className="group p-4 bg-background border rounded-xl hover:shadow-md hover:border-primary/30 transition-all text-center animate-fade-up"
                   style={{ animationDelay: `${index * 30}ms` }}
                 >
@@ -332,7 +336,7 @@ export default async function HomePage() {
                 <h2 className="text-2xl font-bold">Sản phẩm nổi bật</h2>
                 <p className="text-muted-foreground text-sm mt-1">Những sản phẩm được quan tâm nhiều nhất</p>
               </div>
-              <Link href="/products" className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
+              <Link href="/products" transitionTypes={["nav-forward"]} className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
                 Xem tất cả
                 <ArrowRight className="h-4 w-4" />
               </Link>
@@ -342,6 +346,7 @@ export default async function HomePage() {
                 <Link
                   key={product.id}
                   href={`/products/${product.slug}`}
+                  transitionTypes={["nav-forward"]}
                   className="group bg-background border rounded-2xl overflow-hidden hover:shadow-xl hover:border-primary/20 transition-all duration-300 animate-fade-up"
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
@@ -421,14 +426,14 @@ export default async function HomePage() {
                 Hãy là người đầu tiên đăng sản phẩm trên EUT Marketplace
               </p>
               {session?.user?.role === "SELLER" && session?.user?.sellerStatus === "APPROVED" ? (
-                <Link href="/seller/products/new">
+                <Link href="/seller/products/new" transitionTypes={["nav-forward"]}>
                   <Button>
                     <Smartphone className="h-4 w-4 mr-2" />
                     Đăng sản phẩm mới
                   </Button>
                 </Link>
               ) : (
-                <Link href="/products">
+                <Link href="/products" transitionTypes={["nav-forward"]}>
                   <Button>Khám phá ngay</Button>
                 </Link>
               )}
@@ -535,14 +540,14 @@ export default async function HomePage() {
               </p>
 
               <div className="flex flex-wrap gap-4 justify-center mb-12">
-                <Link href="/auth/register">
+                <Link href="/auth/register" transitionTypes={["nav-forward"]}>
                   <Button size="lg" className="bg-white text-slate-900 hover:bg-blue-50 shadow-2xl h-14 px-10 font-semibold group">
                     <Smartphone className="h-5 w-5 mr-2 group-hover:scale-110 transition-transform" />
                     Bắt đầu ngay
                     <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
                   </Button>
                 </Link>
-                <Link href="/products">
+                <Link href="/products" transitionTypes={["nav-forward"]}>
                   <Button size="lg" variant="outline" className="bg-white/10 backdrop-blur border-white/20 text-white hover:bg-white/20 h-14 px-8 font-semibold">
                     Tìm hiểu thêm
                   </Button>
@@ -569,5 +574,6 @@ export default async function HomePage() {
         </section>
       )}
     </div>
+    </DirectionalTransition>
   )
 }

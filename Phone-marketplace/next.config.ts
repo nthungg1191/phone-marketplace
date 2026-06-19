@@ -4,6 +4,9 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
+  experimental: {
+    viewTransition: true,
+  },
   allowedDevOrigins: [
     "localhost:3000",
     "127.0.0.1:3000",
