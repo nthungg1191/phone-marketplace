@@ -19,6 +19,22 @@ export interface SuggestedAction {
   type: 'search' | 'compare' | 'order' | 'policy' | 'quick_reply'
 }
 
+function formatNowVi(): string {
+  const now = new Date()
+  const time = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+  const date = now.toLocaleDateString('vi-VN')
+  return `${time} ngày ${date}`
+}
+
+function replaceDynamicPlaceholders(text: string): string {
+  if (!text) return text
+  const nowStr = formatNowVi()
+  return text
+    .replace(/\[NOW\]/g, nowStr)
+    .replace(/\[giờ hiện tại\]/gi, nowStr)
+    .replace(/\[ngày hiện tại\]/gi, nowStr)
+}
+
 type ProductFromDb = {
   id: number
   title: string
@@ -151,6 +167,9 @@ export class AIShoppingService {
       )
       responseText = llmRes.text
     }
+
+    responseText = replaceDynamicPlaceholders(responseText)
+    if (responseHtml) responseHtml = replaceDynamicPlaceholders(responseHtml)
 
     await this.saveTurn(
       conversation.id,
