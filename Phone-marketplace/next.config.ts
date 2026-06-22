@@ -80,6 +80,16 @@ const nextConfig: NextConfig = {
         hostname: "images.unsplash.com",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "images.seeklogo.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "images.samsung.com",
+        pathname: "/**",
+      }
     ],
   },
 };

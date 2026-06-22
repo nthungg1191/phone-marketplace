@@ -328,7 +328,7 @@ body {
 
   /* Card hover effect */
   .card-hover {
-    transition: all 0.2s ease;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
   }
   .card-hover:hover {
     transform: translateY(-2px);
@@ -346,6 +346,10 @@ body {
   .focus-ring {
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
   }
+
+  /* Typography utilities */
+  .text-balance { text-wrap: balance; }
+  .tabular { font-variant-numeric: tabular-nums; }
 }
 
 /* ============================================

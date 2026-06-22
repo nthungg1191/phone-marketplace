@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { auth } from "@/lib/auth"
 
 // GET /api/products - Danh sách sản phẩm
 export async function GET(request: Request) {
@@ -9,11 +10,12 @@ export async function GET(request: Request) {
     const page = parseInt(searchParams.get("page") || "1")
     const limit = parseInt(searchParams.get("limit") || "12")
     const skip = (page - 1) * limit
+    const myProducts = searchParams.get("myProducts") === "true"
 
     // Build filter
     const filterParams: Record<string, unknown> = {}
     for (const [key, value] of searchParams.entries()) {
-      if (!["page", "limit", "sortBy", "sortOrder"].includes(key)) {
+      if (!["page", "limit", "sortBy", "sortOrder", "myProducts"].includes(key)) {
         if (key === "minPrice" || key === "maxPrice" || key === "minBatteryHealth" || key === "maxBatteryHealth") {
           filterParams[key] = parseInt(value)
         } else if (key === "ramGb" || key === "storageGb") {
@@ -26,8 +28,27 @@ export async function GET(request: Request) {
       }
     }
 
-    const where: Record<string, unknown> = {
-      status: "ACTIVE",
+    // myProducts mode: show seller's own products (all statuses)
+    let sellerId: string | undefined
+    if (myProducts) {
+      const session = await auth()
+      if (!session?.user) {
+        return NextResponse.json({ error: "Vui lòng đăng nhập" }, { status: 401 })
+      }
+      sellerId = session.user.id
+    }
+
+    const where: Record<string, unknown> = {}
+
+    if (myProducts && sellerId) {
+      // Seller sees all their products regardless of status
+      where.sellerId = sellerId
+      if (filterParams.status) {
+        where.status = filterParams.status
+      }
+    } else {
+      // Public: only active products
+      where.status = "ACTIVE"
     }
 
     if (filterParams.brandId) where.brandId = filterParams.brandId
