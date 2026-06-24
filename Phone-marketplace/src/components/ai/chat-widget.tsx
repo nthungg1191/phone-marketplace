@@ -41,12 +41,6 @@ Tôi có thể giúp bạn:
 • Giải đáp thanh toán
 • Hướng dẫn đổi trả`
 
-const DEFAULT_ACTIONS: SuggestedAction[] = [
-  { label: 'Tìm điện thoại dưới 10 triệu', value: 'Tìm điện thoại dưới 10 triệu', type: 'search' },
-  { label: 'So sánh iPhone 13 và Galaxy S23', value: 'So sánh iPhone 13 và Galaxy S23', type: 'compare' },
-  { label: 'Kiểm tra đơn hàng', value: 'Kiểm tra đơn hàng của tôi', type: 'order' },
-  { label: 'Chính sách đổi trả', value: 'Chính sách đổi trả như thế nào', type: 'policy' },
-]
 
 function decodeHtmlEntities(text: string): string {
   return text
@@ -117,7 +111,6 @@ export function ChatWidget({ className }: ChatWidgetProps) {
   const [input, setInput] = React.useState('')
   const [isLoading, setIsLoading] = React.useState(false)
   const [conversationId, setConversationId] = React.useState<string | null>(null)
-  const [suggestedActions, setSuggestedActions] = React.useState<SuggestedAction[]>(DEFAULT_ACTIONS)
   const [isLoggedIn, setIsLoggedIn] = React.useState(false)
   const [showLoginPrompt, setShowLoginPrompt] = React.useState(false)
 
@@ -202,10 +195,6 @@ export function ChatWidget({ className }: ChatWidgetProps) {
         createdAt: new Date().toISOString(),
       }
       setMessages(prev => [...prev, assistantMsg])
-
-      if (data.actions) {
-        setSuggestedActions(data.actions)
-      }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Xin lỗi, đã xảy ra lỗi. Vui lòng thử lại.'
       const errorMsg: AIMessage = {
@@ -332,24 +321,6 @@ export function ChatWidget({ className }: ChatWidgetProps) {
             <p className="text-sm text-amber-800">
               Vui lòng <a href="/auth/login" className="underline font-medium">đăng nhập</a> để sử dụng AI Assistant.
             </p>
-          </div>
-        )}
-
-        {/* Suggested actions (after first message) */}
-        {messages.length > 0 && suggestedActions.length > 0 && (
-          <div className="space-y-2 pt-2">
-            <p className="text-xs text-gray-500 font-medium">Bạn có thể hỏi thêm</p>
-            <div className="flex flex-wrap gap-2">
-              {suggestedActions.slice(0, 3).map((action, i) => (
-                <button
-                  key={i}
-                  onClick={() => handleSend(action.value)}
-                  className="px-3 py-1.5 text-xs bg-gray-100 hover:bg-blue-100 text-gray-600 rounded-full transition-colors"
-                >
-                  {action.label}
-                </button>
-              ))}
-            </div>
           </div>
         )}
 

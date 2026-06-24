@@ -114,13 +114,9 @@ export async function GET(
     const isAdmin = session?.user?.role === "ADMIN"
     const canEdit = isOwner || isAdmin
 
-    // Only increment view count if NOT owner (prevents self-clicking)
-    if (!isOwner) {
-      await prisma.product.update({
-        where: { id: product.id },
-        data: { viewCount: { increment: 1 } },
-      })
-    }
+    // View count is incremented by the client after a short dwell delay
+    // (see POST /api/products/[id]/view). Incrementing here would cause a
+    // double count on every page load.
 
     return NextResponse.json({ product, canEdit })
   } catch (error) {

@@ -187,19 +187,38 @@ export default function ProductDetailPage() {
     fetchProduct()
   }, [slug])
 
+  // Track a product view once the user has actually stayed on the page for
+  // a few seconds. The sessionStorage flag is a fast client-side dedupe
+  // (so we don't even issue the network call within the same tab).
+  // The server is still the source of truth: it deduplicates by an
+  // HttpOnly-friendly cookie and rate-limits by IP.
   React.useEffect(() => {
-    const trackView = async () => {
-      if (!product?.id) return
-      const viewedKey = `viewed_product_${product.id}`
-      if (sessionStorage.getItem(viewedKey)) return
+    if (!product?.id) return
+
+    const viewedKey = `viewed_product_${product.id}`
+    if (sessionStorage.getItem(viewedKey)) return
+
+    const controller = new AbortController()
+    const dwellMs = 3000 + Math.floor(Math.random() * 2000) // 3-5s, jittered
+
+    const timer = window.setTimeout(async () => {
+      if (controller.signal.aborted) return
       try {
-        await fetch(`/api/products/${product.id}/view`, { method: "POST" })
+        await fetch(`/api/products/${product.id}/view`, {
+          method: "POST",
+          signal: controller.signal,
+        })
         sessionStorage.setItem(viewedKey, "true")
-      } catch {
-        // silent fail
+      } catch (err) {
+        // Silent fail; AbortError is expected on unmount
+        if (err instanceof DOMException && err.name === "AbortError") return
       }
+    }, dwellMs)
+
+    return () => {
+      controller.abort()
+      window.clearTimeout(timer)
     }
-    trackView()
   }, [product?.id])
 
   React.useEffect(() => {
