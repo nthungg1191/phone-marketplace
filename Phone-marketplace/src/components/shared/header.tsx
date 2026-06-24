@@ -135,6 +135,7 @@ export function Header() {
             ? "bg-background/95 backdrop-blur-md border-b shadow-sm"
             : "bg-background border-b"
         )}
+        style={{ viewTransitionName: "site-header" }}
       >
         <div className="container mx-auto px-4">
           <div className="flex h-16 items-center justify-between gap-4">
@@ -187,6 +188,8 @@ export function Header() {
                 <input
                   type="search"
                   placeholder="Tìm kiếm sản phẩm..."
+                  aria-label="Tìm kiếm sản phẩm"
+                  autoComplete="off"
                   className="w-full h-10 pl-10 pr-4 rounded-lg border bg-muted/50 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
                 />
               </div>
@@ -198,6 +201,7 @@ export function Header() {
               <Link
                 href="/cart"
                 className="relative p-2 rounded-lg hover:bg-muted transition-colors"
+                aria-label="Giỏ hàng"
               >
                 <ShoppingCart className="h-5 w-5" />
                 {cartCount > 0 && (
@@ -214,6 +218,7 @@ export function Header() {
                   <Link
                     href="/messages"
                     className="relative p-2 rounded-lg hover:bg-muted transition-colors"
+                    aria-label="Tin nhắn"
                   >
                     <MessageCircle className="h-5 w-5" />
                     {unreadMessages > 0 && (
@@ -317,7 +322,7 @@ export function Header() {
               {/* Mobile Menu */}
               <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon" className="md:hidden">
+                  <Button variant="ghost" size="icon" className="md:hidden" aria-label="Menu">
                     <Menu className="h-5 w-5" />
                   </Button>
                 </SheetTrigger>

@@ -464,7 +464,7 @@ export default function SellerReportPage() {
                   ].map((item) => (
                     <button
                       key={item.key}
-                      onClick={() => handleQuickSelect(item.key as any)}
+                      onClick={() => handleQuickSelect(item.key as "today" | "yesterday" | "7d" | "30d" | "thisMonth" | "lastMonth")}
                       className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-muted transition-colors"
                     >
                       {item.label}
@@ -993,7 +993,7 @@ function RevenueChart({
   const totalOrders = data.reduce((sum, d) => sum + d.orders, 0)
 
   const handleBarHover = (e: React.MouseEvent, idx: number) => {
-    const svg = e.currentTarget.ownerSVGElement!
+    const svg = (e.currentTarget as SVGSVGElement).ownerSVGElement ?? e.currentTarget as SVGSVGElement
     const svgRect = svg.getBoundingClientRect()
     const barRect = e.currentTarget.getBoundingClientRect()
     setTooltip({

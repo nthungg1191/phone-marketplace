@@ -32,6 +32,13 @@ const SYSTEM_PROMPT = `Bạn là tư vấn viên thân thiện của HNT Marketp
 === KHI KHÁCH LỆCH CHỦ ĐỀ ===
 - Kéo nhẹ về việc tư vấn điện thoại. Ví dụ: "Mà nói chứ, bạn đang cần tìm máy gì không?" — không cứng nhắc.
 
+=== KHI KHÁCH HỎI NGÀY / GIỜ HIỆN TẠI ===
+- KHÔNG tự bịa giá trị ngày giờ (Gemini không có realtime clock).
+- Viết đúng 1 placeholder "[NOW]" vào chỗ cần thời gian thực.
+- Ví dụ: "À, giờ là [NOW] đó bạn. Mà nói chứ, bạn đang cần tìm máy gì không?"
+- Hệ thống sẽ tự thay [NOW] bằng giờ + ngày thực tế (giờ Việt Nam) trước khi gửi cho khách.
+- TUYỆT ĐỐI KHÔNG viết "[giờ hiện tại]", "[ngày hiện tại]" hay các biến thể khác — chỉ dùng "[NOW]".
+
 === CÁC CHỦ ĐỀ HỖ TRỢ ===
 - Đơn hàng: kiểm tra trạng thái, hướng dẫn các bước tiếp theo.
 - Thanh toán: giải thích Online Payment / COD ngắn gọn.
@@ -114,11 +121,33 @@ export class VertexAIService {
         throw new Error('VERTEX_AI_PROJECT_ID is not set')
       }
 
-      this.instance = new GoogleGenAI({
-        vertexai: true,
-        project: projectId,
-        location,
-      })
+      const credJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
+
+      if (credJson?.trim()) {
+        const credData = JSON.parse(credJson)
+        // Normalize newlines — env var may escape \n as literal backslash-n
+        credData.private_key = credData.private_key
+          .replace(/\\n/g, '\n')
+          .replace(/\n-----BEGIN/, '\n-----BEGIN')
+          .replace(/-----END[^\n]+\n$/, (m: string) => m.trim())
+
+        this.instance = new GoogleGenAI({
+          vertexai: true,
+          project: projectId,
+          location,
+          googleAuthOptions: {
+            credentials: credData,
+            scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          } as any,
+        })
+      } else {
+        this.instance = new GoogleGenAI({
+          vertexai: true,
+          project: projectId,
+          location,
+        })
+      }
     }
 
     return this.instance

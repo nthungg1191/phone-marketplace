@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { DirectionalTransition } from "@/components/shared/directional-transition"
 
 async function getFeaturedProducts() {
   try {
@@ -101,14 +102,15 @@ export default async function HomePage() {
   ])
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <DirectionalTransition>
+      <div className="flex flex-col min-h-screen">
       {/* Hero Section */}
       <section className="relative overflow-hidden">
         {/* Background Image Layer */}
         <div className="absolute inset-0 z-0">
           <Image
             src="https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=1920&q=80"
-            alt="Smartphone shopping"
+            alt=""
             fill
             className="object-cover object-center"
             priority
@@ -137,12 +139,12 @@ export default async function HomePage() {
           <div className="max-w-3xl">
             {/* Badge */}
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/20 backdrop-blur-sm border border-primary/30 rounded-full text-sm mb-8 animate-fade-up">
-              <Zap className="h-4 w-4 text-yellow-400" />
+              <Zap className="h-4 w-4 text-yellow-400" aria-hidden="true" />
               <span className="text-white/90">Ưu đãi giảm giá 20% cho thành viên mới</span>
             </div>
 
             {/* Headline */}
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight text-white animate-fade-up">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight text-white animate-fade-up text-balance">
               Mua bán điện thoại
               <br />
               <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
@@ -157,14 +159,14 @@ export default async function HomePage() {
 
             {/* CTA Buttons */}
             <div className="flex flex-wrap gap-4 animate-fade-up">
-              <Link href="/products">
+              <Link href="/products" transitionTypes={["nav-forward"]}>
                 <Button size="lg" className="bg-white text-slate-900 hover:bg-blue-50 shadow-2xl shadow-primary/30 h-12 px-8 font-semibold group">
                   <Smartphone className="h-5 w-5 mr-2 group-hover:scale-110 transition-transform" />
                   Khám phá sản phẩm
                 </Button>
               </Link>
               {!session && (
-                <Link href="/auth/register">
+                <Link href="/auth/register" transitionTypes={["nav-forward"]}>
                   <Button size="lg" variant="outline" className="bg-white/10 backdrop-blur border-white/20 text-white hover:bg-white/20 h-12 px-8 font-semibold">
                     Đăng ký ngay
                     <ArrowRight className="h-4 w-4 ml-2" />
@@ -176,15 +178,15 @@ export default async function HomePage() {
             {/* Trust indicators */}
             <div className="flex flex-wrap items-center gap-6 mt-10 animate-fade-up">
               <div className="flex items-center gap-2">
-                <ShieldCheck className="h-5 w-5 text-green-400" />
+                <ShieldCheck className="h-5 w-5 text-green-400" aria-hidden="true" />
                 <span className="text-sm text-slate-300">Kiểm tra chất lượng</span>
               </div>
               <div className="flex items-center gap-2">
-                <Truck className="h-5 w-5 text-blue-400" />
+                <Truck className="h-5 w-5 text-blue-400" aria-hidden="true" />
                 <span className="text-sm text-slate-300">Giao hàng nhanh</span>
               </div>
               <div className="flex items-center gap-2">
-                <Star className="h-5 w-5 text-amber-400" />
+                <Star className="h-5 w-5 text-amber-400" aria-hidden="true" />
                 <span className="text-sm text-slate-300">Đánh giá thật</span>
               </div>
             </div>
@@ -217,7 +219,7 @@ export default async function HomePage() {
                 <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 text-primary mb-2">
                   <stat.icon className="h-5 w-5" />
                 </div>
-                <div className="text-2xl md:text-3xl font-bold">{stat.value}</div>
+                <div className="text-2xl md:text-3xl font-bold tabular">{stat.value}</div>
                 <div className="text-sm text-muted-foreground">{stat.label}</div>
               </div>
             ))}
@@ -254,10 +256,10 @@ export default async function HomePage() {
           <div className="container mx-auto px-4">
             <div className="flex items-center justify-between mb-8">
               <div>
-                <h2 className="text-2xl font-bold">Danh mục</h2>
+                <h2 className="text-2xl font-bold text-balance">Danh mục</h2>
                 <p className="text-muted-foreground text-sm mt-1">Tìm kiếm theo nhu cầu của bạn</p>
               </div>
-              <Link href="/categories" className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
+              <Link href="/categories" transitionTypes={["nav-forward"]} className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
                 Xem tất cả
                 <ArrowRight className="h-4 w-4" />
               </Link>
@@ -269,6 +271,7 @@ export default async function HomePage() {
                   <Link
                     key={category.id}
                     href={`/categories/${category.slug}`}
+                    transitionTypes={["nav-forward"]}
                     className="group p-6 bg-background border rounded-2xl hover:shadow-lg hover:border-primary/30 transition-all text-center animate-fade-up"
                     style={{ animationDelay: `${index * 50}ms` }}
                   >
@@ -290,10 +293,10 @@ export default async function HomePage() {
           <div className="container mx-auto px-4">
             <div className="flex items-center justify-between mb-8">
               <div>
-                <h2 className="text-2xl font-bold">Thương hiệu</h2>
+                <h2 className="text-2xl font-bold text-balance">Thương hiệu</h2>
                 <p className="text-muted-foreground text-sm mt-1">Các thương hiệu nổi tiếng</p>
               </div>
-              <Link href="/brands" className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
+              <Link href="/brands" transitionTypes={["nav-forward"]} className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
                 Xem tất cả
                 <ArrowRight className="h-4 w-4" />
               </Link>
@@ -303,6 +306,7 @@ export default async function HomePage() {
                 <Link
                   key={brand.id}
                   href={`/brands/${brand.slug}`}
+                  transitionTypes={["nav-forward"]}
                   className="group p-4 bg-background border rounded-xl hover:shadow-md hover:border-primary/30 transition-all text-center animate-fade-up"
                   style={{ animationDelay: `${index * 30}ms` }}
                 >
@@ -329,10 +333,10 @@ export default async function HomePage() {
           <div className="container mx-auto px-4">
             <div className="flex items-center justify-between mb-8">
               <div>
-                <h2 className="text-2xl font-bold">Sản phẩm nổi bật</h2>
+                <h2 className="text-2xl font-bold text-balance">Sản phẩm nổi bật</h2>
                 <p className="text-muted-foreground text-sm mt-1">Những sản phẩm được quan tâm nhiều nhất</p>
               </div>
-              <Link href="/products" className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
+              <Link href="/products" transitionTypes={["nav-forward"]} className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
                 Xem tất cả
                 <ArrowRight className="h-4 w-4" />
               </Link>
@@ -342,6 +346,7 @@ export default async function HomePage() {
                 <Link
                   key={product.id}
                   href={`/products/${product.slug}`}
+                  transitionTypes={["nav-forward"]}
                   className="group bg-background border rounded-2xl overflow-hidden hover:shadow-xl hover:border-primary/20 transition-all duration-300 animate-fade-up"
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
@@ -382,7 +387,7 @@ export default async function HomePage() {
                     </p>
 
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-lg font-bold text-primary">
+                      <span className="text-xl font-bold text-primary tabular">
                         {Number(product.price).toLocaleString("vi-VN")}đ
                       </span>
                       <div className="flex items-center gap-1 text-xs">
@@ -421,14 +426,14 @@ export default async function HomePage() {
                 Hãy là người đầu tiên đăng sản phẩm trên EUT Marketplace
               </p>
               {session?.user?.role === "SELLER" && session?.user?.sellerStatus === "APPROVED" ? (
-                <Link href="/seller/products/new">
+                <Link href="/seller/products/new" transitionTypes={["nav-forward"]}>
                   <Button>
                     <Smartphone className="h-4 w-4 mr-2" />
                     Đăng sản phẩm mới
                   </Button>
                 </Link>
               ) : (
-                <Link href="/products">
+                <Link href="/products" transitionTypes={["nav-forward"]}>
                   <Button>Khám phá ngay</Button>
                 </Link>
               )}
@@ -443,7 +448,7 @@ export default async function HomePage() {
         <div className="absolute inset-0 z-0">
           <Image
             src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=1920&q=80"
-            alt="Shopping experience"
+            alt=""
             fill
             className="object-cover object-center"
           />
@@ -453,10 +458,10 @@ export default async function HomePage() {
         <div className="container mx-auto px-4 relative z-10">
           <div className="text-center max-w-2xl mx-auto mb-16">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 backdrop-blur border border-primary/20 rounded-full text-sm text-primary mb-4">
-              <ShieldCheck className="h-4 w-4" />
+              <ShieldCheck className="h-4 w-4" aria-hidden="true" />
               <span>Cam kết của chúng tôi</span>
             </div>
-            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-slate-900">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-slate-900 text-balance">
               Tại sao chọn EUT Marketplace?
             </h2>
             <p className="text-muted-foreground text-lg">
@@ -503,7 +508,7 @@ export default async function HomePage() {
           <div className="absolute inset-0 z-0">
             <Image
               src="https://images.unsplash.com/photo-1556656793-08538906a9f8?w=1920&q=80"
-              alt="Phone store"
+              alt=""
               fill
               className="object-cover object-center"
             />
@@ -535,14 +540,14 @@ export default async function HomePage() {
               </p>
 
               <div className="flex flex-wrap gap-4 justify-center mb-12">
-                <Link href="/auth/register">
+                <Link href="/auth/register" transitionTypes={["nav-forward"]}>
                   <Button size="lg" className="bg-white text-slate-900 hover:bg-blue-50 shadow-2xl h-14 px-10 font-semibold group">
                     <Smartphone className="h-5 w-5 mr-2 group-hover:scale-110 transition-transform" />
                     Bắt đầu ngay
                     <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
                   </Button>
                 </Link>
-                <Link href="/products">
+                <Link href="/products" transitionTypes={["nav-forward"]}>
                   <Button size="lg" variant="outline" className="bg-white/10 backdrop-blur border-white/20 text-white hover:bg-white/20 h-14 px-8 font-semibold">
                     Tìm hiểu thêm
                   </Button>
@@ -552,15 +557,15 @@ export default async function HomePage() {
               {/* Trust indicators */}
               <div className="flex flex-wrap items-center justify-center gap-8 text-sm text-slate-300">
                 <div className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-400" />
+                  <CheckCircle className="h-5 w-5 text-green-400" aria-hidden="true" />
                   <span>Đăng tin miễn phí</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <ShieldCheck className="h-5 w-5 text-green-400" />
+                  <ShieldCheck className="h-5 w-5 text-green-400" aria-hidden="true" />
                   <span>Kiểm tra chất lượng miễn phí</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Truck className="h-5 w-5 text-green-400" />
+                  <Truck className="h-5 w-5 text-green-400" aria-hidden="true" />
                   <span>Hỗ trợ vận chuyển</span>
                 </div>
               </div>
@@ -569,5 +574,6 @@ export default async function HomePage() {
         </section>
       )}
     </div>
+    </DirectionalTransition>
   )
 }

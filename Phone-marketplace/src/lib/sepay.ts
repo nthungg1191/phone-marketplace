@@ -1,13 +1,20 @@
-// Sepay Payment Gateway - Official SDK
+// SePay Payment Gateway - Official SDK
 // Documentation: https://sepay.vn
+// Production checklist: https://developer.sepay.vn/en/sepay-webhooks/bao-mat
 
 import { SePayPgClient } from 'sepay-pg-node'
 import { createHmac, timingSafeEqual } from 'crypto'
 
-// Environment variables needed:
-// - SEPAY_ENV: 'sandbox' | 'production' (default: sandbox)
-// - SEPAY_MERCHANT_ID: Your merchant ID
-// - SEPAY_SECRET_KEY: Your secret key
+// ===========================================
+// Environment Variables
+// ===========================================
+// SEPAY_ENV: 'sandbox' | 'production'
+// SEPAY_MERCHANT_ID: Your merchant ID (from SePay dashboard)
+// SEPAY_SECRET_KEY: Secret key for PG SDK authentication
+// SEPAY_WEBHOOK_SECRET: Secret key for HMAC-SHA256 webhook signature (from webhook dashboard)
+// SEPAY_WEBHOOK_SECRET_TIMESTAMP: Seconds allowed for replay protection (default: 300 = 5 min)
+// SEPAY_ALLOWED_IPS: Comma-separated SePay IP addresses (optional)
+// SEPAY_WEBHOOK_URL: Your public webhook URL for production
 
 export interface SepayConfig {
   env: 'sandbox' | 'production'
@@ -41,17 +48,20 @@ export interface SepayCallbackData {
   payment_method: string
   customer_id?: string
   custom_data?: string
-  signature?: string
   error_code?: string
   error_message?: string
 }
 
-// Singleton client instance
+export interface SepayWebhookPayload extends SepayCallbackData {
+  signature?: string
+  timestamp?: number
+}
+
+// ===========================================
+// Singleton client
+// ===========================================
 let sepayClient: SePayPgClient | null = null
 
-/**
- * Get SePay client instance (singleton)
- */
 export function getSepayClient(): SePayPgClient {
   if (sepayClient) return sepayClient
 
@@ -68,9 +78,34 @@ export function getSepayClient(): SePayPgClient {
   return sepayClient
 }
 
-/**
- * Create SePay checkout URL and form fields
- */
+// ===========================================
+// Environment helpers
+// ===========================================
+export function isProduction(): boolean {
+  return process.env.SEPAY_ENV === 'production'
+}
+
+export function isSandbox(): boolean {
+  return process.env.SEPAY_ENV !== 'production'
+}
+
+export function getWebhookSecret(): string {
+  return process.env.SEPAY_WEBHOOK_SECRET || ''
+}
+
+export function getAllowedIps(): string[] {
+  const ips = process.env.SEPAY_ALLOWED_IPS || ''
+  return ips ? ips.split(',').map(ip => ip.trim()).filter(Boolean) : []
+}
+
+export function getTimestampTolerance(): number {
+  const val = process.env.SEPAY_WEBHOOK_TIMESTAMP_TOLERANCE
+  return val ? parseInt(val, 10) : 300 // default 5 minutes
+}
+
+// ===========================================
+// Create Payment
+// ===========================================
 export async function createSepayPayment(params: SepayPaymentRequest): Promise<SepayPaymentResponse> {
   try {
     const client = getSepayClient()
@@ -103,69 +138,102 @@ export async function createSepayPayment(params: SepayPaymentRequest): Promise<S
   }
 }
 
+// ===========================================
+// Webhook Signature Verification
+// ===========================================
+
 /**
- * Verify webhook signature from SePay
+ * Verify HMAC-SHA256 webhook signature per SePay docs.
+ *
+ * Format: {timestamp}.{raw_body} → HMAC-SHA256 → sha256={hex}
+ *
+ * Docs: https://developer.sepay.vn/en/sepay-webhooks/xac-thuc
+ *
+ * @param rawBody - raw request body as string (bytes)
+ * @param signature - signature from X-SePay-Signature header (with or without sha256= prefix)
+ * @param timestamp - Unix timestamp from X-SePay-Timestamp header
  */
-export function verifySepayWebhook(payload: SepayCallbackData, expectedSignature: string): boolean {
-  try {
-    const secretKey = process.env.SEPAY_SECRET_KEY || ''
-    if (!secretKey) {
-      console.warn('SEPAY_SECRET_KEY is not configured')
-      return false
-    }
+export function verifySepayWebhook(
+  rawBody: string,
+  signature: string,
+  timestamp: number
+): boolean {
+  const secretKey = getWebhookSecret()
 
-    const message = [
-      payload.order_invoice_number,
-      payload.order_amount,
-      payload.order_status,
-      payload.transaction_id,
-      payload.payment_method,
-      payload.customer_id || '',
-      payload.custom_data || '',
-    ].join('|')
-
-    const signature = createHmac('sha256', secretKey)
-      .update(message)
-      .digest('hex')
-
-    return timingSafeEqual(
-      Buffer.from(signature),
-      Buffer.from(expectedSignature)
-    )
-  } catch (error) {
-    console.error('Sepay webhook verification error:', error)
+  if (!secretKey) {
+    console.warn('[SePay] SEPAY_WEBHOOK_SECRET is not configured')
     return false
   }
+
+  if (!rawBody) {
+    console.warn('[SePay] Empty raw body for signature verification')
+    return false
+  }
+
+  // Anti-replay: reject timestamps outside tolerance window
+  const now = Math.floor(Date.now() / 1000)
+  const tolerance = getTimestampTolerance()
+  if (Math.abs(now - timestamp) > tolerance) {
+    console.warn(`[SePay] Webhook timestamp expired: ${timestamp}, now: ${now}, tolerance: ${tolerance}s`)
+    return false
+  }
+
+  // Build signed message: {timestamp}.{raw_body}
+  const message = `${timestamp}.${rawBody}`
+
+  // Compute expected signature
+  const expected = 'sha256=' + createHmac('sha256', secretKey)
+    .update(message, 'utf8')
+    .digest('hex')
+
+  // Normalize: strip prefix if signature doesn't have it
+  const normalizedSig = signature.startsWith('sha256=') ? signature : `sha256=${signature}`
+  const normalizedExp = expected
+
+  const sigBuf = Buffer.from(normalizedSig)
+  const expBuf = Buffer.from(normalizedExp)
+
+  if (sigBuf.length !== expBuf.length) {
+    return false
+  }
+
+  return timingSafeEqual(sigBuf, expBuf)
 }
 
 /**
- * Parse webhook payload from SePay
+ * Parse webhook payload from SePay PG (Payment Gateway) callback.
+ * This is the format sent by the PG SDK when a QR payment completes.
  */
 export function parseSepayWebhook(body: Record<string, unknown>): SepayCallbackData | null {
+  if (!body || typeof body !== 'object') return null
+
+  const b = body as Record<string, unknown>
+
+  if (!b.order_invoice_number || !b.order_status) {
+    return null
+  }
+
   return {
-    order_invoice_number: body.order_invoice_number as string,
-    order_amount: body.order_amount as string,
-    order_status: body.order_status as string,
-    transaction_id: body.transaction_id as string,
-    payment_method: body.payment_method as string,
-    customer_id: body.customer_id as string | undefined,
-    custom_data: body.custom_data as string | undefined,
-    signature: body.signature as string | undefined,
-    error_code: body.error_code as string | undefined,
-    error_message: body.error_message as string | undefined,
+    order_invoice_number: String(b.order_invoice_number),
+    order_amount: String(b.order_amount ?? '0'),
+    order_status: String(b.order_status),
+    transaction_id: String(b.transaction_id ?? ''),
+    payment_method: String(b.payment_method ?? ''),
+    customer_id: b.customer_id ? String(b.customer_id) : undefined,
+    custom_data: b.custom_data ? String(b.custom_data) : undefined,
+    error_code: b.error_code ? String(b.error_code) : undefined,
+    error_message: b.error_message ? String(b.error_message) : undefined,
   }
 }
 
-/**
- * Check order status with SePay
- */
+// ===========================================
+// Check & Cancel Order
+// ===========================================
 export async function checkSepayOrder(orderInvoiceNumber: string) {
   try {
     const client = getSepayClient()
     const response = await client.order.retrieve(orderInvoiceNumber)
 
-    // SDK returns Axios response with nested data structure
-    // Extract actual order data from response.data.data
     const axiosData = response.data as Record<string, unknown>
     let orderData: Record<string, unknown> | null = null
 
@@ -177,24 +245,129 @@ export async function checkSepayOrder(orderInvoiceNumber: string) {
 
     return { success: true, data: orderData }
   } catch (error) {
-    console.error(`Sepay check order error for ${orderInvoiceNumber}:`, error)
+    console.error(`[SePay] check order error for ${orderInvoiceNumber}:`, error)
     return { success: false, error: error instanceof Error ? error.message : String(error) }
   }
 }
 
-/**
- * Cancel SePay order (for QR payments)
- */
 export async function cancelSepayOrder(orderInvoiceNumber: string) {
   try {
     const client = getSepayClient()
     const response = await client.order.cancel(orderInvoiceNumber)
     return { success: true, data: response.data }
   } catch (error) {
-    console.error('Sepay cancel order error:', error)
+    console.error('[SePay] cancel order error:', error)
     return { success: false, error }
   }
 }
 
-// Export client getter for advanced usage
-// (already exported inline at function declaration above)
+// ===========================================
+// IP Whitelist Helper
+// ===========================================
+export function isAllowedIp(clientIp: string | null): boolean {
+  if (!clientIp) return false
+
+  const allowed = getAllowedIps()
+  if (allowed.length === 0) return true // No whitelist configured, allow all
+
+  // Handle proxies (X-Forwarded-For can contain multiple IPs)
+  const ip = clientIp.split(',')[0].trim()
+
+  return allowed.includes(ip)
+}
+
+// ===========================================
+// Production helpers
+// ===========================================
+export function getWebhookUrl(): string {
+  return process.env.SEPAY_WEBHOOK_URL || ''
+}
+
+export function getMerchantId(): string {
+  return process.env.SEPAY_MERCHANT_ID || ''
+}
+
+export function getSepayEnv(): 'sandbox' | 'production' {
+  return (process.env.SEPAY_ENV || 'sandbox') as 'sandbox' | 'production'
+}
+
+// ===========================================
+// Reconciliation helper (for cron job)
+// ===========================================
+export interface SePayTransaction {
+  id: string
+  gateway: string
+  transactionDate: string
+  accountNumber: string
+  subAccount?: string
+  code: string
+  amountIn: number
+  amountOut: number
+  accumulated: number
+  content: string
+  referenceCode?: string
+  transferType: 'in' | 'out'
+}
+
+/**
+ * List recent transactions from SePay API.
+ * Useful for reconciliation cron job.
+ */
+export async function listSepayTransactions(params?: {
+  fromDate?: string
+  toDate?: string
+  accountNumber?: string
+  limit?: number
+}): Promise<{ success: boolean; data?: SePayTransaction[]; error?: string }> {
+  try {
+    const client = getSepayClient()
+
+    // Use the transactions list API if available
+    const sepayClient = client as unknown as { transaction?: { list: (params: {
+      from_date?: string
+      to_date?: string
+      account_number?: string
+      limit?: number
+    }) => Promise<{ data?: unknown }> } }
+    const response = await sepayClient.transaction?.list({
+      from_date: params?.fromDate,
+      to_date: params?.toDate,
+      account_number: params?.accountNumber,
+      limit: params?.limit || 100,
+    })
+
+    if (!response?.data) {
+      return { success: true, data: [] }
+    }
+
+    const rawData = response.data as Record<string, unknown>
+    let txList: Record<string, unknown>[] = []
+
+    if (Array.isArray(rawData)) {
+      txList = rawData as Record<string, unknown>[]
+    } else if (rawData && typeof rawData === 'object' && 'data' in rawData) {
+      const inner = (rawData as Record<string, unknown>).data
+      txList = Array.isArray(inner) ? inner as Record<string, unknown>[] : []
+    }
+
+    const transactions: SePayTransaction[] = txList.map((tx) => ({
+      id: String(tx.id ?? ''),
+      gateway: String(tx.gateway ?? ''),
+      transactionDate: String(tx.transactionDate ?? tx.transaction_date ?? ''),
+      accountNumber: String(tx.accountNumber ?? tx.account_number ?? ''),
+      subAccount: tx.subAccount ? String(tx.subAccount) : undefined,
+      code: String(tx.code ?? ''),
+      amountIn: Number(tx.transferType === 'in' ? tx.transferAmount ?? 0 : 0),
+      amountOut: Number(tx.transferType === 'out' ? tx.transferAmount ?? 0 : 0),
+      accumulated: Number(tx.accumulated ?? 0),
+      content: String(tx.content ?? ''),
+      referenceCode: tx.referenceCode ? String(tx.referenceCode) : undefined,
+      transferType: String(tx.transferType ?? 'in') as 'in' | 'out',
+    }))
+
+    return { success: true, data: transactions }
+  } catch (error) {
+    console.error('[SePay] list transactions error:', error)
+    return { success: false, error: error instanceof Error ? error.message : String(error) }
+  }
+}

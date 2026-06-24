@@ -509,7 +509,7 @@ export default function SellerDashboardPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {stats.topProducts.filter(Boolean).map((product: any, index: number) => (
+                {(stats.topProducts as Array<NonNullable<typeof stats.topProducts[number]>>).filter(Boolean).map((product, index) => (
                   <Link key={product.id} href={`/seller/products/${product.slug}/edit`} className="block">
                     <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors group">
                       <div className="h-10 w-10 bg-muted rounded-lg overflow-hidden relative shrink-0">
@@ -699,7 +699,7 @@ export default function SellerDashboardPage() {
                       </p>
                       {review.comment && (
                         <p className="text-sm text-muted-foreground line-clamp-2">
-                          "{review.comment}"
+                          {"\u201C"}{review.comment}{"\u201D"}
                         </p>
                       )}
                     </div>

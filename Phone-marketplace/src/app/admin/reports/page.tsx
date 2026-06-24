@@ -65,7 +65,7 @@ export default function AdminReportsPage() {
     }
   }, [status, session, router])
 
-  const generateMockReportData = (): ReportData => {
+  const generateMockReportData = React.useMemo((): ReportData => {
     const now = new Date()
     const revenueByDay = []
     const days = dateRange === "7d" ? 7 : dateRange === "30d" ? 30 : dateRange === "90d" ? 90 : 365
@@ -76,7 +76,7 @@ export default function AdminReportsPage() {
       revenueByDay.push({
         date: date.toISOString().split("T")[0],
         label: date.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" }),
-        revenue: Math.floor(Math.random() * 50000000) + 10000000,
+        revenue: (i * 1317 + 10000000) % 50000000 + 10000000,
       })
     }
 
@@ -85,8 +85,8 @@ export default function AdminReportsPage() {
       const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
       monthlyRevenue.push({
         month: date.toLocaleDateString("vi-VN", { month: "short", year: "2-digit" }),
-        revenue: Math.floor(Math.random() * 500000000) + 100000000,
-        orders: Math.floor(Math.random() * 500) + 100,
+        revenue: (i * 987654 + 100000000) % 500000000 + 100000000,
+        orders: (i * 43 + 100) % 500 + 100,
       })
     }
 
@@ -119,9 +119,9 @@ export default function AdminReportsPage() {
       },
       monthlyRevenue,
     }
-  }
+  }, [dateRange])
 
-  const reportData = generateMockReportData()
+  const reportData = generateMockReportData
   const maxRevenue = Math.max(...reportData.revenueByDay.map(d => d.revenue), 1)
   const maxMonthlyRevenue = Math.max(...reportData.monthlyRevenue.map(d => d.revenue), 1)
   const maxOrders = Math.max(...reportData.monthlyRevenue.map(d => d.orders), 1)

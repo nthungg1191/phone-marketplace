@@ -23,10 +23,11 @@ export async function GET(
     )
 
     return NextResponse.json({ messages })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('AI History API error:', error)
+    const message = error instanceof Error ? error.message : 'Lỗi server'
     return NextResponse.json(
-      { error: error.message || 'Lỗi server' },
+      { error: message },
       { status: 500 }
     )
   }

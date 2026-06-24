@@ -4,6 +4,9 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
+  experimental: {
+    viewTransition: true,
+  },
   allowedDevOrigins: [
     "localhost:3000",
     "127.0.0.1:3000",
@@ -77,6 +80,16 @@ const nextConfig: NextConfig = {
         hostname: "images.unsplash.com",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "images.seeklogo.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "images.samsung.com",
+        pathname: "/**",
+      }
     ],
   },
 };
