@@ -4,6 +4,7 @@ import * as React from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { signIn, useSession } from "next-auth/react"
 import Link from "next/link"
+import Image from "next/image"
 import { Suspense } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -144,7 +145,7 @@ function LoginContent() {
             {/* Contact Info */}
             <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
               <p className="text-sm text-blue-800">
-                <strong>Liên hệ hỗ trợ:</strong> Nếu bạn cho rằng đây là nhầm lẫn, vui lòng liên hệ bộ phận hỗ trợ qua email <strong>hotro@eutmarket.com</strong> để được giải quyết.
+                <strong>Liên hệ hỗ trợ:</strong> Nếu bạn cho rằng đây là nhầm lẫn, vui lòng liên hệ bộ phận hỗ trợ qua email <strong>hotro.hnt@gmail.com</strong> để được giải quyết.
               </p>
             </div>
 
@@ -158,9 +159,14 @@ function LoginContent() {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
         <Card className="w-full max-w-md shadow-xl">
           <CardHeader className="space-y-1 text-center">
-            <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="text-2xl font-bold text-primary-foreground">EUT</span>
-            </div>
+            <Image
+              src="/logo.png"
+              alt="HNT"
+              width={96}
+              height={96}
+              className="mx-auto mb-4 h-24 w-auto"
+              priority
+            />
             <CardTitle className="text-2xl font-bold">Chào mừng trở lại</CardTitle>
             <CardDescription>
               Đăng nhập để tiếp tục mua sắm

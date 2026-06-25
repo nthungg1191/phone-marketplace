@@ -9,6 +9,7 @@ import {
   Store,
   Settings,
   BarChart3,
+  TrendingUp,
 } from "lucide-react"
 import { DashboardLayout } from "./dashboard-layout"
 
@@ -17,6 +18,7 @@ const navGroups = [
     label: "Tổng quan",
     items: [
       { label: "Dashboard", href: "/seller/dashboard", icon: LayoutDashboard },
+      { label: "Analytics", href: "/seller/analytics", icon: TrendingUp },
       { label: "Báo cáo", href: "/seller/report", icon: BarChart3 },
     ],
   },

@@ -93,7 +93,7 @@ export function LockedAccountGuard({ children }: LockedAccountGuardProps) {
             {/* Contact Info */}
             <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
               <p className="text-sm text-blue-800">
-                <strong>Liên hệ hỗ trợ:</strong> Nếu bạn cho rằng đây là nhầm lẫn, vui lòng liên hệ bộ phận hỗ trợ qua email <strong>hotro@eutmarket.com</strong> để được giải quyết.
+                <strong>Liên hệ hỗ trợ:</strong> Nếu bạn cho rằng đây là nhầm lẫn, vui lòng liên hệ bộ phận hỗ trợ qua email <strong>hotro.hnt@gmail.com</strong> để được giải quyết.
               </p>
             </div>
 

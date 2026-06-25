@@ -546,7 +546,7 @@ export default function SettingsPage() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <p className="text-sm text-muted-foreground">
-                    Kiểm soát ai có thể xem thông tin cá nhân của bạn trên EUT Marketplace.
+                    Kiểm soát ai có thể xem thông tin cá nhân của bạn trên HNT.
                   </p>
 
                   <div className="space-y-4">

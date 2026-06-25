@@ -292,7 +292,7 @@ export function SellerRegisterModal({ open, onOpenChange }: SellerRegisterModalP
                   onCheckedChange={(checked) => setAgreeTerms(!!checked)}
                 />
                 <Label htmlFor="modal-terms" className="text-sm font-normal cursor-pointer">
-                  Tôi đồng ý với điều khoản của EUT
+                  Tôi đồng ý với điều khoản của HNT
                 </Label>
               </div>
               <Button type="submit" className="w-full" disabled={submitting}>
@@ -375,7 +375,7 @@ export function SellerRegisterModal({ open, onOpenChange }: SellerRegisterModalP
               onCheckedChange={(checked) => setAgreeTerms(!!checked)}
             />
             <Label htmlFor="reg-terms" className="text-sm font-normal cursor-pointer">
-              Tôi đồng ý với điều khoản của EUT
+              Tôi đồng ý với điều khoản của HNT
             </Label>
           </div>
           <Button type="submit" className="w-full" disabled={submitting}>

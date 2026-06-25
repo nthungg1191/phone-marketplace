@@ -227,6 +227,7 @@ model User {
   trustScoreHistory TrustScoreHistory[]
   wishlistItems   Wishlist[]
   aiConversations AIConversation[]
+  productViews    ProductView[]
 
   // OAuth accounts
   accounts        Account[]
@@ -416,13 +417,14 @@ model Product {
   
   viewCount       Int             @default(0)
   
-  cartItems       CartItem[]
+cartItems       CartItem[]
   orderItems      OrderItem[]
   offers          Offer[]
   reviews         Review[]
   conversations   Conversation[]
   wishlistItems   Wishlist[]
-  
+  views           ProductView[]
+
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   
@@ -491,6 +493,30 @@ model HealthCheck {
 
   createdAt           DateTime @default(now())
   updatedAt          DateTime @updatedAt
+}
+
+// ============================================================
+// PRODUCT ANALYTICS (view tracking)
+// ============================================================
+
+model ProductView {
+  id          String   @id @default(cuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  ipAddress   String?
+  userAgent   String?  @db.Text
+  referer     String?  @db.Text
+
+  createdAt   DateTime @default(now())
+
+  @@index([productId, createdAt(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+  @@index([userId])
+  @@index([ipAddress, createdAt])
 }
 
 // ============================================================

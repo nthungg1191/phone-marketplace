@@ -1,6 +1,6 @@
 import Link from "next/link"
 import Image from "next/image"
-import { auth } from "@/lib/auth"
+import { getSession } from "@/lib/auth-cache"
 import { prisma } from "@/lib/prisma"
 import { ShieldCheck, Star, Truck, Headphones, Smartphone, Tablet, Zap, Award, Users, ArrowRight, CheckCircle, Package } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -94,7 +94,7 @@ const stats = [
 ]
 
 export default async function HomePage() {
-  const session = await auth()
+  const session = await getSession()
   const [products, categories, brands] = await Promise.all([
     getFeaturedProducts(),
     getCategories(),
@@ -423,7 +423,7 @@ export default async function HomePage() {
               </div>
               <h3 className="text-xl font-bold mb-2">Chưa có sản phẩm nào</h3>
               <p className="text-muted-foreground mb-6">
-                Hãy là người đầu tiên đăng sản phẩm trên EUT Marketplace
+                Hãy là người đầu tiên đăng sản phẩm trên HNT
               </p>
               {session?.user?.role === "SELLER" && session?.user?.sellerStatus === "APPROVED" ? (
                 <Link href="/seller/products/new" transitionTypes={["nav-forward"]}>
@@ -462,7 +462,7 @@ export default async function HomePage() {
               <span>Cam kết của chúng tôi</span>
             </div>
             <h2 className="text-3xl md:text-4xl font-bold mb-4 text-slate-900 text-balance">
-              Tại sao chọn EUT Marketplace?
+              Tại sao chọn HNT?
             </h2>
             <p className="text-muted-foreground text-lg">
               Chúng tôi cam kết mang đến trải nghiệm mua bán điện thoại tốt nhất với sự minh bạch và uy tín.
@@ -536,7 +536,7 @@ export default async function HomePage() {
               </h2>
 
               <p className="text-lg text-slate-300 mb-10 max-w-xl mx-auto leading-relaxed">
-                Đăng bán ngay trên EUT Marketplace, kiểm tra chất lượng miễn phí và nhận giá tốt nhất thị trường.
+                Đăng bán ngay trên HNT, kiểm tra chất lượng miễn phí và nhận giá tốt nhất thị trường.
               </p>
 
               <div className="flex flex-wrap gap-4 justify-center mb-12">

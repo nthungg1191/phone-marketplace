@@ -771,7 +771,7 @@ export default function ProductDetailPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <h3 className="font-semibold text-lg">Kết quả kiểm tra chất lượng</h3>
-                        <p className="text-sm text-muted-foreground">Được thực hiện bởi hệ thống EUT</p>
+                        <p className="text-sm text-muted-foreground">Được thực hiện bởi hệ thống HNT</p>
                       </div>
                       <div className="text-right">
                         <p className="text-2xl font-bold text-primary">{healthPassRate}%</p>
@@ -816,7 +816,7 @@ export default function ProductDetailPage() {
                     <Shield className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                     <h3 className="font-semibold mb-2">Chưa có kiểm tra chất lượng</h3>
                     <p className="text-sm text-muted-foreground">
-                      Sản phẩm này chưa được kiểm tra bởi hệ thống EUT.
+                      Sản phẩm này chưa được kiểm tra bởi hệ thống HNT.
                     </p>
                   </CardContent>
                 </Card>

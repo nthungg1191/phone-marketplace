@@ -1,7 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { Smartphone, Mail, Phone } from "lucide-react"
+import Image from "next/image"
+import { Mail, Phone } from "lucide-react"
 
 const footerLinks = {
   product: [
@@ -67,14 +68,14 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 lg:gap-12">
           {/* Brand Column */}
           <div className="lg:col-span-1">
-            <Link href="/" className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
-                <Smartphone className="h-5 w-5 text-primary-foreground" />
-              </div>
-              <div>
-                <p className="font-bold text-lg leading-none">EUT</p>
-                <p className="text-muted-foreground text-sm">Marketplace</p>
-              </div>
+            <Link href="/" className="inline-block mb-4">
+              <Image
+                src="/logo.png"
+                alt="HNT"
+                width={140}
+                height={40}
+                className="h-10 w-auto"
+              />
             </Link>
             <p className="text-sm text-muted-foreground mb-4">
               Thị trường mua bán điện thoại uy tín với hệ thống kiểm tra chất lượng minh bạch.
@@ -169,12 +170,12 @@ export function Footer() {
         <div className="container mx-auto px-4 py-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-sm text-muted-foreground">
-              © {new Date().getFullYear()} EUT Marketplace. Tất cả quyền được bảo lưu.
+              © {new Date().getFullYear()} HNT. Tất cả quyền được bảo lưu.
             </p>
             <div className="flex items-center gap-6 text-sm text-muted-foreground">
-              <a href="mailto:support@eut.vn" className="flex items-center gap-2 hover:text-foreground transition-colors">
+              <a href="mailto:support@hnt.vn" className="flex items-center gap-2 hover:text-foreground transition-colors">
                 <Mail className="h-4 w-4" />
-                support@eut.vn
+                support@hnt.vn
               </a>
               <a href="tel:19001234" className="flex items-center gap-2 hover:text-foreground transition-colors">
                 <Phone className="h-4 w-4" />

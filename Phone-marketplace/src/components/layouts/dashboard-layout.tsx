@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { signOut } from "next-auth/react"
@@ -78,18 +79,24 @@ function NavContent({ collapsed, navGroups, pathname, onToggleCollapse, pendingC
         collapsed ? "justify-center px-2" : "justify-between px-4"
       )}>
         {collapsed ? (
-          <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
-            <p className="text-sm font-bold text-primary-foreground">EUT</p>
-          </div>
+          <Image
+            src="/logo.png"
+            alt="HNT"
+            width={40}
+            height={40}
+            className="h-10 w-10 object-contain"
+            priority
+          />
         ) : (
-          <Link href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
-              <span className="text-sm font-bold text-primary-foreground">EUT</span>
-            </div>
-            <div>
-              <p className="font-bold text-lg leading-none">EUT</p>
-              <p className="text-xs text-muted-foreground">Marketplace</p>
-            </div>
+          <Link href="/">
+            <Image
+              src="/logo.png"
+              alt="HNT"
+              width={120}
+              height={40}
+              className="h-10 w-auto"
+              priority
+            />
           </Link>
         )}
       </div>

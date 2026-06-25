@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   FileText,
   Activity,
+  BarChart3,
 } from "lucide-react"
 import { DashboardLayout } from "./dashboard-layout"
 
@@ -45,6 +46,7 @@ const navGroups = [
   {
     label: "Báo cáo",
     items: [
+      { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
       { label: "Báo cáo", href: "/admin/reports", icon: FileText },
       { label: "Nhật ký", href: "/admin/activity", icon: Activity },
     ],

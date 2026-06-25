@@ -108,6 +108,24 @@ export async function POST(
       select: { viewCount: true },
     })
 
+    // --- Log the view for analytics ---
+    // Awaited (per product decision) so we don't lose logs if the server
+    // crashes after the response. Insert failures are isolated so they
+    // never break the user-facing increment flow.
+    try {
+      await prisma.productView.create({
+        data: {
+          productId: product.id,
+          userId: session?.user?.id ?? null,
+          ipAddress: ip,
+          userAgent: request.headers.get("user-agent"),
+          referer: request.headers.get("referer"),
+        },
+      })
+    } catch (logErr) {
+      console.error("[ProductView] failed to insert:", logErr)
+    }
+
     viewed.add(id)
     cookieStore.set(VIEWED_COOKIE, serializeViewedIds(viewed), {
       maxAge: COOKIE_MAX_AGE_SECONDS,

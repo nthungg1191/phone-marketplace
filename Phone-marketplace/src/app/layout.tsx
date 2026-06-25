@@ -17,14 +17,19 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "EUT Marketplace - Thị trường điện thoại uy tín",
-    template: "%s | EUT Marketplace",
+    default: "HNT - Thị trường điện thoại uy tín",
+    template: "%s | HNT",
   },
   description: "Mua bán điện thoại cũ uy tín với hệ thống kiểm tra chất lượng minh bạch",
-  keywords: ["mua bán điện thoại", "điện thoại cũ", "smartphone", "EUT Marketplace"],
-  authors: [{ name: "EUT Marketplace" }],
+  keywords: ["mua bán điện thoại", "điện thoại cũ", "smartphone", "HNT"],
+  authors: [{ name: "HNT" }],
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+    apple: "/logo.png",
+  },
   openGraph: {
-    title: "EUT Marketplace",
+    title: "HNT",
     description: "Mua bán điện thoại cũ uy tín với hệ thống kiểm tra chất lượng minh bạch",
     type: "website",
     locale: "vi_VN",

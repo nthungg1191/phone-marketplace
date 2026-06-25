@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { useSession, signOut } from "next-auth/react"
 import { useState, useEffect } from "react"
 import { usePathname } from "next/navigation"
@@ -16,7 +17,6 @@ import {
   LayoutDashboard,
   Package,
   Search,
-  Smartphone,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { NotificationPopover } from "./notification-popover"
@@ -141,13 +141,14 @@ export function Header() {
           <div className="flex h-16 items-center justify-between gap-4">
             {/* Logo */}
             <Link href="/" className="flex items-center gap-3 shrink-0">
-              <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
-                <Smartphone className="h-5 w-5 text-primary-foreground" />
-              </div>
-              <div className="hidden sm:block">
-                <p className="font-bold text-xl tracking-tight leading-none">EUT</p>
-                <p className="text-muted-foreground font-medium text-sm">Marketplace</p>
-              </div>
+              <Image
+                src="/logo.png"
+                alt="HNT"
+                width={120}
+                height={40}
+                className="h-10 w-auto"
+                priority
+              />
             </Link>
 
             {/* Desktop Navigation */}
@@ -329,11 +330,14 @@ export function Header() {
                 <SheetContent side="right" className="w-80">
                   <SheetHeader className="pb-4 border-b">
                     <SheetTitle>
-                      <Link href="/" className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                          <Smartphone className="h-4 w-4 text-primary-foreground" />
-                        </div>
-                        <span className="font-bold">EUT Marketplace</span>
+                      <Link href="/" className="flex items-center gap-2" onClick={() => setIsMenuOpen(false)}>
+                        <Image
+                          src="/logo.png"
+                          alt="HNT"
+                          width={96}
+                          height={32}
+                          className="h-8 w-auto"
+                        />
                       </Link>
                     </SheetTitle>
                   </SheetHeader>

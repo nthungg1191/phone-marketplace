@@ -260,7 +260,7 @@ export default function SellerRegisterPage() {
                   Yêu cầu đang được xem xét
                 </h2>
                 <p className="text-muted-foreground mb-4">
-                  Yêu cầu đăng ký của bạn đang được đội ngũ EUT xem xét.
+                  Yêu cầu đăng ký của bạn đang được đội ngũ HNT xem xét.
                 </p>
                 <p className="text-sm text-yellow-600">
                   Thời gian xử lý: 24-48 giờ làm việc
@@ -373,7 +373,7 @@ export default function SellerRegisterPage() {
                     <a href="/policy" className="text-primary hover:underline" target="_blank">
                       Chính sách người bán
                     </a>{" "}
-                    của EUT Marketplace
+                    của HNT
                   </Label>
                 </div>
 
@@ -399,7 +399,7 @@ export default function SellerRegisterPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Store className="h-5 w-5 text-primary" />
-              Trở thành Người bán trên EUT
+              Trở thành Người bán trên HNT
             </CardTitle>
             <CardDescription>
               Bắt đầu bán hàng và tiếp cận hàng triệu khách hàng tiềm năng
@@ -521,7 +521,7 @@ export default function SellerRegisterPage() {
                   <a href="/policy" className="text-primary hover:underline" target="_blank">
                     Chính sách người bán
                   </a>{" "}
-                  của EUT Marketplace
+                  của HNT
                 </Label>
               </div>
 

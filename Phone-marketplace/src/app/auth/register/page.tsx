@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import Image from "next/image"
 import { signIn } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -141,9 +142,14 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="space-y-1 text-center">
-          <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="text-2xl font-bold text-primary-foreground">EUT</span>
-          </div>
+          <Image
+            src="/logo.png"
+            alt="HNT"
+            width={96}
+            height={96}
+            className="mx-auto mb-4 h-24 w-auto"
+            priority
+          />
           <CardTitle className="text-2xl font-bold">Tạo tài khoản mới</CardTitle>
           <CardDescription>
             Đăng ký để bắt đầu mua sắm

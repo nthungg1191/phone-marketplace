@@ -12,10 +12,10 @@ async function main() {
   // Create Admin User
   const adminPassword = await bcrypt.hash("admin123", 12)
   await prisma.user.upsert({
-    where: { email: "admin@eutmarket.vn" },
+    where: { email: "admin.hnt@gmail.com" },
     update: {},
     create: {
-      email: "admin@eutmarket.vn",
+      email: "admin.hnt@gmail.com",
       password: adminPassword,
       name: "Administrator",
       role: "ADMIN",
@@ -23,7 +23,7 @@ async function main() {
       sellerStatus: "NONE",
     },
   })
-  console.log("✅ Created admin user (admin@eutmarket.vn / admin123)")
+    console.log("✅ Created admin user (admin.hnt@gmail.com / admin123)")
 
   // Create Brands
   const brandData = [
@@ -151,10 +151,10 @@ async function main() {
   // Create Seller 1 (Trusted)
   const seller1Password = await bcrypt.hash("seller123", 12)
   const seller1 = await prisma.user.upsert({
-    where: { email: "seller@eutmarket.vn" },
+    where: { email: "seller.hnt@gmail.com" },
     update: {},
     create: {
-      email: "seller@eutmarket.vn",
+      email: "seller.hnt@gmail.com",
       password: seller1Password,
       name: "Nguyễn Văn Seller",
       phone: "0901234567",
@@ -178,15 +178,15 @@ async function main() {
       },
     },
   })
-  console.log("✅ Created seller 1 (seller@eutmarket.vn / seller123)")
+    console.log("✅ Created seller 1 (seller.hnt@gmail.com / seller123)")
 
   // Create Seller 2 (New)
   const seller2Password = await bcrypt.hash("seller456", 12)
   const seller2 = await prisma.user.upsert({
-    where: { email: "seller2@eutmarket.vn" },
+    where: { email: "seller2.hnt@gmail.com" },
     update: {},
     create: {
-      email: "seller2@eutmarket.vn",
+      email: "seller2.hnt@gmail.com",
       password: seller2Password,
       name: "Trần Thị Minh",
       phone: "0912345678",
@@ -210,15 +210,15 @@ async function main() {
       },
     },
   })
-  console.log("✅ Created seller 2 (seller2@eutmarket.vn / seller456)")
+    console.log("✅ Created seller 2 (seller2.hnt@gmail.com / seller456)")
 
   // Create Buyer
   const buyerPassword = await bcrypt.hash("buyer123", 12)
   await prisma.user.upsert({
-    where: { email: "buyer@eutmarket.vn" },
+    where: { email: "buyer.hnt@gmail.com" },
     update: {},
     create: {
-      email: "buyer@eutmarket.vn",
+      email: "buyer.hnt@gmail.com",
       password: buyerPassword,
       name: "Trần Thị Buyer",
       phone: "0907654321",
@@ -227,7 +227,7 @@ async function main() {
       sellerStatus: "NONE",
     },
   })
-  console.log("✅ Created buyer (buyer@eutmarket.vn / buyer123)")
+    console.log("✅ Created buyer (buyer.hnt@gmail.com / buyer123)")
 
   // Create 15 Sample Products with full HealthCheck
   const productSamples = [
@@ -615,10 +615,10 @@ async function main() {
   console.log(`   • ${categories.length} Categories`)
   console.log(`   • ${productCount} Products (${productSamples.filter(p => p.healthCheck).length} with health checks)`)
   console.log(`\n🔐 Test Accounts:`)
-  console.log(`   Admin: admin@eutmarket.vn / admin123`)
-  console.log(`   Seller: seller@eutmarket.vn / seller123`)
-  console.log(`   Seller2: seller2@eutmarket.vn / seller456`)
-  console.log(`   Buyer: buyer@eutmarket.vn / buyer123`)
+  console.log(`   Admin: admin.hnt@gmail.com / admin123`)
+  console.log(`   Seller: seller.hnt@gmail.com / seller123`)
+  console.log(`   Seller2: seller2.hnt@gmail.com / seller456`)
+  console.log(`   Buyer: buyer.hnt@gmail.com / buyer123`)
 }
 
 main()

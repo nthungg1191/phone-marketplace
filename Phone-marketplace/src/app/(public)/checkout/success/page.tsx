@@ -246,7 +246,7 @@ export default function CheckoutSuccessPage() {
               </CardHeader>
               <CardContent className="text-center space-y-6">
                 <p className="text-green-700 text-lg">
-                  Cảm ơn bạn đã đặt hàng tại <span className="font-semibold">EUT Marketplace</span>
+                  Cảm ơn bạn đã đặt hàng tại <span className="font-semibold">HNT</span>
                 </p>
 
                 {order && (
