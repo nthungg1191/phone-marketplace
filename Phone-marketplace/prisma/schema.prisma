@@ -156,7 +156,7 @@ enum HealthCheckStatus {
 }
 
 // ============================================================
-// OAUTH ACCOUNTS & EMAIL VERIFICATION
+// OAUTH ACCOUNTS & EMAIL VERIFICATION & PASSWORD RESET
 // ============================================================
 
 model Account {
@@ -185,6 +185,15 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expires   DateTime
+
+  @@index([email])
 }
 
 // ============================================================

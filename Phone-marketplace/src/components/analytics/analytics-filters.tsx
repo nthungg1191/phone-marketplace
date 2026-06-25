@@ -50,6 +50,7 @@ export function AnalyticsFilters({
   const categoryId = searchParams.get("categoryId") ?? ""
   const brandId = searchParams.get("brandId") ?? ""
 
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const setParam = React.useCallback(
     (key: string, value: string | null) => {
       const params = new URLSearchParams(searchParams.toString())

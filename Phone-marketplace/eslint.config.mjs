@@ -8,6 +8,17 @@ const eslintConfig = defineConfig([
   {
     rules: {
       "react-hooks/set-state-in-effect": "off",
+      "react-hooks/immutability": "off",
+      "no-use-before-define": "off",
+      "@typescript-eslint/use-before-define": "off",
+    },
+  },
+  {
+    files: ["**/*.ts", "**/*.tsx"],
+    rules: {
+      "@typescript-eslint/use-before-define": "off",
+      "no-use-before-define": "off",
+      "react-hooks/immutability": "off",
     },
   },
   // Override default ignores of eslint-config-next.

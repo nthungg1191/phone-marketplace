@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
 import { z } from "zod"
+import { sendOrderConfirmationEmail } from "@/lib/email"
 
 interface CartItem {
   productId: string
@@ -291,6 +292,28 @@ export async function POST(request: Request) {
       })
 
       createdOrders.push(order)
+    }
+
+    // Send confirmation email to buyer (async, non-blocking)
+    const primaryOrder = createdOrders[0]
+    if (primaryOrder && primaryOrder.buyer.email) {
+      sendOrderConfirmationEmail({
+        to: primaryOrder.buyer.email,
+        buyerName: primaryOrder.buyer.name || "Khách hàng",
+        orderCode: primaryOrder.orderCode,
+        totalAmount: Number(primaryOrder.totalAmount),
+        items: primaryOrder.items.map((item) => ({
+          title: item.title,
+          price: Number(item.price),
+          quantity: item.quantity,
+          image: item.image,
+        })),
+        shippingAddress: primaryOrder.shippingAddress,
+        paymentMethod: data.paymentMethod,
+        paymentDeadline: primaryOrder.paymentDeadline
+          ? new Date(primaryOrder.paymentDeadline).toLocaleString("vi-VN")
+          : null,
+      })
     }
 
     // Clear cart items for this user

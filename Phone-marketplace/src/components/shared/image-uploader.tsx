@@ -27,7 +27,7 @@ export default function ImageUploader({
   const [dragIndex, setDragIndex] = React.useState<number | null>(null)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
   const isUploadingRef = React.useRef(false)
-  const inputKeyRef = React.useRef(0)
+  const [inputKey, setInputKey] = React.useState(0)
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
@@ -49,7 +49,7 @@ export default function ImageUploader({
       e.target.value = ""
       isUploadingRef.current = false
       // Force remount file input to reset its state
-      inputKeyRef.current += 1
+      setInputKey(k => k + 1)
     }
   }
 
@@ -157,7 +157,7 @@ export default function ImageUploader({
     <div className="space-y-4">
       {/* Hidden file input */}
       <input
-        key={inputKeyRef.current}
+        key={inputKey}
         ref={fileInputRef}
         type="file"
         accept="image/*"

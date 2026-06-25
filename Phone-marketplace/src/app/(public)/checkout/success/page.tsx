@@ -49,7 +49,7 @@ export default function CheckoutSuccessPage() {
   const verifiedRef = React.useRef(false)
   const checkingRef = React.useRef(false)
   const orderIdRef = React.useRef<string | null>(null)
-  orderIdRef.current = orderId
+  React.useEffect(() => { orderIdRef.current = orderId }, [orderId])
 
   // Auto-check payment status - only once on mount
   React.useEffect(() => {
