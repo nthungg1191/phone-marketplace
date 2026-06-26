@@ -16,8 +16,16 @@ import {
   MessageCircle,
   BadgeCheck,
   TrendingUp,
+  XCircle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -39,6 +47,8 @@ interface Seller {
   phone: string | null
   sellerRank: string
   sellerStatus: string
+  isLocked: boolean
+  lockedReason: string | null
   createdAt: string
   sellerStats: SellerStats | null
 }
@@ -166,6 +176,36 @@ export default function SellerProfilePage() {
             <Button>Quay lại trang chủ</Button>
           </Link>
         </div>
+      </div>
+    )
+  }
+
+  if (seller.isLocked) {
+    return (
+      <div className="min-h-screen bg-muted/30 flex items-center justify-center">
+        <Dialog open>
+          <DialogContent className="text-center max-w-md">
+            <DialogHeader>
+              <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
+                <XCircle className="h-8 w-8 text-red-600" />
+              </div>
+              <DialogTitle className="text-xl">Cửa hàng đã bị khoá</DialogTitle>
+              <DialogDescription className="text-base">
+                Cửa hàng <strong>"{seller.name}"</strong> hiện không hoạt động.
+                {seller.lockedReason && (
+                  <span className="block mt-2 text-red-600 font-medium">
+                    Lý do: {seller.lockedReason}
+                  </span>
+                )}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="mt-4">
+              <Link href="/">
+                <Button className="w-full">Quay lại trang chủ</Button>
+              </Link>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     )
   }

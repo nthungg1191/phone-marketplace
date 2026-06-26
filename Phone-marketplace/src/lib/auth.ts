@@ -118,13 +118,25 @@ export const authConfig: NextAuthConfig = {
         token.lockedAt = extUser.lockedAt || null
       }
 
-      // Check for lock status update on every JWT refresh
+      // Check for role/lock status update on every JWT refresh
+      // Phải update role từ DB mỗi lần vì admin có thể vừa duyệt seller (USER -> SELLER)
+      // hoặc vừa khoá/mở khoá tài khoản
       if (token.id) {
         const dbUser = await prisma.user.findUnique({
           where: { id: token.id as string },
-          select: { isLocked: true, lockedReason: true, lockedAt: true },
+          select: {
+            role: true,
+            sellerStatus: true,
+            sellerRank: true,
+            isLocked: true,
+            lockedReason: true,
+            lockedAt: true,
+          },
         })
         if (dbUser) {
+          token.role = dbUser.role
+          token.sellerStatus = dbUser.sellerStatus
+          token.sellerRank = dbUser.sellerRank
           token.isLocked = dbUser.isLocked
           token.lockedReason = dbUser.lockedReason
           token.lockedAt = dbUser.lockedAt?.toISOString() || null

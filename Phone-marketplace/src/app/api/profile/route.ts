@@ -35,6 +35,9 @@ export async function GET() {
         sellerStatus: true,
         sellerRank: true,
         sellerApprovedAt: true,
+        isLocked: true,
+        lockedReason: true,
+        lockedAt: true,
         sellerStats: {
           select: {
             avgRating: true,

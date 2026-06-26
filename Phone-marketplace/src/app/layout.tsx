@@ -4,6 +4,7 @@ import "./globals.css"
 import { SessionProvider } from "@/components/providers/session-provider"
 import { ToastProvider } from "@/components/shared/toast"
 import { LockedAccountGuard } from "@/components/providers/locked-account-guard"
+import { NotificationClientProvider } from "@/components/providers/notification-client-provider"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -52,11 +53,13 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <SessionProvider>
-          <ToastProvider>
-            <LockedAccountGuard>
-              {children}
-            </LockedAccountGuard>
-          </ToastProvider>
+          <NotificationClientProvider>
+            <ToastProvider>
+              <LockedAccountGuard>
+                {children}
+              </LockedAccountGuard>
+            </ToastProvider>
+          </NotificationClientProvider>
         </SessionProvider>
       </body>
     </html>

@@ -3,7 +3,7 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
-import { MapPin, Camera, Shield, Star, Clock, Check } from "lucide-react"
+import { MapPin, Camera, Shield, Star, Clock, Check, Lock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -16,6 +16,9 @@ interface SellerInfo {
   sellerRank: string
   sellerRequestAt: string | null
   sellerApprovedAt: string | null
+  isLocked: boolean
+  lockedReason: string | null
+  lockedAt: string | null
   sellerStats: {
     avgRating: number
     totalTransactions: number
@@ -71,8 +74,13 @@ export default function ProfilePage() {
           sellerRank: user.sellerRank,
           sellerRequestAt: user.sellerRequestAt,
           sellerApprovedAt: user.sellerApprovedAt,
+          isLocked: user.isLocked,
+          lockedReason: user.lockedReason,
+          lockedAt: user.lockedAt,
           sellerStats: user.sellerStats,
         })
+      } else if (res.status === 401) {
+        router.replace("/auth/login?callbackUrl=/profile")
       }
     } catch (error) {
       console.error("Error fetching user data:", error)

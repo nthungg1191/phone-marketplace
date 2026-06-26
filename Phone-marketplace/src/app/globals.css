@@ -423,6 +423,27 @@ body {
   }
 }
 
+@keyframes scanLine {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(200%);
+  }
+}
+
+@keyframes progressIndeterminate {
+  0% {
+    left: -33%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
 /* Animation utilities */
 .animate-fade-in {
   animation: fade-in 0.3s ease-out forwards;

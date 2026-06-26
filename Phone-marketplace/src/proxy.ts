@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { auth } from "@/lib/auth"
 
-const PUBLIC_PREFIXES = ["/", "/products", "/brands", "/stores", "/auth", "/search", "/cart", "/checkout"]
+const PUBLIC_PREFIXES = ["/", "/products", "/brands", "/stores", "/auth", "/search", "/cart", "/checkout", "/seller/register"]
 
 const PROTECTED_PREFIXES = ["/profile", "/orders", "/wishlist", "/notifications", "/messages", "/settings", "/addresses"]
 
@@ -34,6 +34,13 @@ export default async function proxy(req: NextRequest) {
 
   // Public routes - allow access
   if (matchesRoute(pathname, PUBLIC_PREFIXES)) {
+    // /seller/register requires login
+    if (pathname.startsWith("/seller/register")) {
+      if (!isLoggedIn) {
+        return NextResponse.redirect(new URL("/auth/login?callbackUrl=/seller/register", req.url))
+      }
+      return NextResponse.next()
+    }
     if (isLoggedIn && pathname.startsWith("/auth/login")) {
       const callbackUrl = searchParams.get("callbackUrl")
       return NextResponse.redirect(new URL(callbackUrl || "/", req.url))

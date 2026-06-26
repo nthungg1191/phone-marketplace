@@ -220,6 +220,12 @@ model User {
   sellerApprovedAt DateTime?
   sellerRejectedReason String?
 
+  // CCCD (xác minh danh tính khi đăng ký seller)
+  idCardNumber   String?
+  idCardName     String?
+  idCardFrontUrl String?
+  idCardBackUrl  String?
+
   sellerRank      SellerRank @default(NEW)
   sellerStats     SellerStats?
 

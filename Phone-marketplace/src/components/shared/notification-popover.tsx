@@ -3,6 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { Bell, Check, Package, MessageCircle, ShoppingBag, Star, AlertCircle, X, ChevronRight } from "lucide-react"
+import { useNotificationContext } from "@/components/providers/notification-provider"
 
 interface Notification {
   id: string
@@ -46,7 +47,7 @@ export function NotificationPopover() {
   const [isOpen, setIsOpen] = React.useState(false)
   const [notifications, setNotifications] = React.useState<Notification[]>([])
   const [loading, setLoading] = React.useState(false)
-  const [unreadCount, setUnreadCount] = React.useState(0)
+  const { unreadCount, decrement, reset, refresh: refreshUnread, notifyUpdated } = useNotificationContext()
   const [activeTab, setActiveTab] = React.useState<TabType>("all")
   const dropdownRef = React.useRef<HTMLDivElement>(null)
 
@@ -74,11 +75,14 @@ export function NotificationPopover() {
   const fetchNotifications = async () => {
     setLoading(true)
     try {
-      const res = await fetch("/api/notifications?limit=20")
+      const res = await fetch("/api/notifications?limit=20", { cache: "no-store" })
       if (res.ok) {
         const data = await res.json()
         setNotifications(data.notifications || [])
-        setUnreadCount(data.unreadCount || 0)
+        // Sync với server để badge đồng bộ
+        if (typeof data.unreadCount === "number") {
+          notifyUpdated()
+        }
       }
     } catch (error) {
       console.error("Error fetching notifications:", error)
@@ -98,7 +102,7 @@ export function NotificationPopover() {
         setNotifications((prev) =>
           prev.map((n) => (n.id === notificationId ? { ...n, isRead: true } : n))
         )
-        setUnreadCount((prev) => Math.max(0, prev - 1))
+        decrement(1)
       }
     } catch (error) {
       console.error("Error marking as read:", error)
@@ -114,7 +118,7 @@ export function NotificationPopover() {
       })
       if (res.ok) {
         setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })))
-        setUnreadCount(0)
+        reset()
       }
     } catch (error) {
       console.error("Error marking all as read:", error)

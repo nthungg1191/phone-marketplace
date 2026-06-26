@@ -6,6 +6,10 @@ import { z } from "zod"
 const sellerRequestSchema = z.object({
   phone: z.string().min(10, "Số điện thoại không hợp lệ").max(20),
   address: z.string().min(10, "Địa chỉ quá ngắn").max(500).optional(),
+  idCardNumber: z.string().min(9, "Số CCCD không hợp lệ").max(12, "Số CCCD không hợp lệ"),
+  idCardName: z.string().min(2, "Họ tên trên CCCD không được để trống").max(100),
+  idCardFrontUrl: z.string().url("Ảnh mặt trước CCCD không hợp lệ"),
+  idCardBackUrl: z.string().url("Ảnh mặt sau CCCD không hợp lệ"),
 })
 
 // GET /api/seller/request - Lấy trạng thái seller request
@@ -24,6 +28,10 @@ export async function GET() {
         sellerRequestAt: true,
         sellerApprovedAt: true,
         sellerRejectedReason: true,
+        idCardNumber: true,
+        idCardName: true,
+        idCardFrontUrl: true,
+        idCardBackUrl: true,
         sellerStats: {
           select: {
             avgRating: true,
@@ -76,6 +84,10 @@ export async function POST(request: Request) {
         sellerRequestAt: new Date(),
         sellerRejectedReason: null,
         phone: data.phone || undefined,
+        idCardNumber: data.idCardNumber,
+        idCardName: data.idCardName,
+        idCardFrontUrl: data.idCardFrontUrl,
+        idCardBackUrl: data.idCardBackUrl,
       },
     })
 

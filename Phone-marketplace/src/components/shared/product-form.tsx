@@ -549,44 +549,8 @@ export default function ProductForm({ product, onSubmit, isLoading }: ProductFor
                             value={customModelName}
                             onChange={(e) => setCustomModelName(e.target.value)}
                             placeholder="VD: iPhone 15"
-                            className="h-9"
+                            className="w-full"
                           />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground">RAM</Label>
-                          <Select
-                            value={customRam.toString()}
-                            onValueChange={(v) => setCustomRam(parseInt(v))}
-                          >
-                            <SelectTrigger className="h-9">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {RAM_OPTIONS.map((r) => (
-                                <SelectItem key={r.value} value={r.value.toString()}>
-                                  {r.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground">Storage</Label>
-                          <Select
-                            value={customStorage.toString()}
-                            onValueChange={(v) => setCustomStorage(parseInt(v))}
-                          >
-                            <SelectTrigger className="h-9">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {STORAGE_OPTIONS.map((s) => (
-                                <SelectItem key={s} value={s.toString()}>
-                                  {s >= 1024 ? `${s / 1024}TB` : `${s}GB`}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
                         </div>
                       </div>
                       <Button
@@ -784,32 +748,6 @@ export default function ProductForm({ product, onSubmit, isLoading }: ProductFor
                   </Select>
                   {errors.color && <p className="text-sm text-red-500">{errors.color}</p>}
                 </div>
-
-                {/* Battery */}
-                <div className="space-y-2">
-                  <Label>% Pin *</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={formData.batteryHealth}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, batteryHealth: parseInt(e.target.value) || 0 }))}
-                    placeholder="VD: 92"
-                    className={errors.batteryHealth ? "border-red-500" : ""}
-                  />
-                  {errors.batteryHealth && <p className="text-sm text-red-500">{errors.batteryHealth}</p>}
-                </div>
-              </div>
-
-              {/* IMEI */}
-              <div className="space-y-2">
-                <Label>IMEI (tùy chọn)</Label>
-                <Input
-                  value={formData.imei ?? ""}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, imei: e.target.value }))}
-                  placeholder="15 chữ số"
-                  maxLength={15}
-                />
               </div>
             </CardContent>
           </Card>

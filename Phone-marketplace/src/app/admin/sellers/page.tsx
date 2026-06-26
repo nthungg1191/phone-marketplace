@@ -29,7 +29,29 @@ import {
   Image,
   ChevronLeft,
   ChevronRight,
+  Package,
+  BarChart3,
+  PieChart,
+  TrendingUp,
+  Lock,
+  CreditCard,
+  MapPin,
+  ZoomIn,
+  ExternalLink,
 } from "lucide-react"
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart as RePieChart,
+  Pie,
+  Cell,
+  Legend,
+} from "recharts"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -53,6 +75,15 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 
 // ============ TYPES ============
+interface Address {
+  id: string
+  fullName: string
+  phone: string
+  street: string
+  wardName: string
+  provinceName: string
+}
+
 interface SellerApplication {
   id: string
   email: string
@@ -61,16 +92,28 @@ interface SellerApplication {
   avatar: string | null
   role: string
   sellerStatus: string
+  isLocked: boolean
+  lockedReason: string | null
+  lockedAt: string | null
   sellerRequestAt: string | null
   sellerApprovedAt: string | null
   sellerRejectedAt: string | null
   sellerRejectedReason: string | null
   sellerApprovedBy: string | null
   sellerRejectedBy: string | null
+  idCardNumber: string | null
+  idCardName: string | null
+  idCardFrontUrl: string | null
+  idCardBackUrl: string | null
   createdAt: string
+  addresses?: Address[]
   sellerStats: {
     isIdentityVerified: boolean | null
   } | null
+  _count: {
+    ordersAsSeller: number
+    products: number
+  }
 }
 
 interface Counts {
@@ -78,8 +121,16 @@ interface Counts {
   PENDING: number
   APPROVED: number
   REJECTED: number
+  ACTIVE: number
+  LOCKED: number
   APPROVED_TODAY: number
   REJECTED_TODAY: number
+  PENDING_TODAY: number
+}
+
+interface ChartDay {
+  date: string
+  approved: number
 }
 
 interface Pagination {
@@ -87,6 +138,20 @@ interface Pagination {
   limit: number
   total: number
   totalPages: number
+}
+
+interface Product {
+  id: string
+  title: string
+  slug: string
+  price: string
+  condition: string
+  status: string
+  images: { id: string; url: string; isPrimary: boolean }[]
+  brand: { id: string; name: string; slug: string }
+  category: { id: string; name: string }
+  _count: { reviews: number }
+  createdAt: string
 }
 
 // ============ STATUS CONFIG ============
@@ -112,11 +177,36 @@ const statusConfig: Record<string, { label: string; color: string; bgColor: stri
     dot: "bg-red-500",
     icon: <XCircle className="h-3.5 w-3.5" />,
   },
+  LOCKED: {
+    label: "Bị khoá",
+    color: "text-red-800",
+    bgColor: "bg-red-50 border border-red-200",
+    dot: "bg-red-600",
+    icon: <XCircle className="h-3.5 w-3.5" />,
+  },
 }
 
-// ============ KPI CARDS ============
-function KPICards({ counts }: { counts: Counts }) {
-  const items = [
+const PIE_COLORS = ["#22c55e", "#eab308", "#ef4444", "#f97316"]
+
+// ============ STATS SECTION ============
+function StatsSection({ counts, chartData }: { counts: Counts; chartData: ChartDay[] }) {
+  const pieData = [
+    { name: "Hoạt động", value: counts.ACTIVE || 0, color: PIE_COLORS[0] },
+    { name: "Chờ duyệt", value: counts.PENDING || 0, color: PIE_COLORS[1] },
+    { name: "Từ chối", value: counts.REJECTED || 0, color: PIE_COLORS[2] },
+    { name: "Bị khoá", value: counts.LOCKED || 0, color: PIE_COLORS[3] },
+  ].filter((d) => d.value > 0)
+
+  const kpiItems = [
+    {
+      label: "Tổng yêu cầu",
+      value: counts.ALL || 0,
+      icon: FileText,
+      color: "blue",
+      bgColor: "bg-blue-100",
+      textColor: "text-blue-700",
+      borderColor: "border-blue-200",
+    },
     {
       label: "Chờ duyệt",
       value: counts.PENDING || 0,
@@ -127,8 +217,8 @@ function KPICards({ counts }: { counts: Counts }) {
       borderColor: "border-amber-200",
     },
     {
-      label: "Đã duyệt hôm nay",
-      value: counts.APPROVED_TODAY || 0,
+      label: "Đang hoạt động",
+      value: counts.ACTIVE || 0,
       icon: CheckCircle,
       color: "green",
       bgColor: "bg-green-100",
@@ -136,8 +226,17 @@ function KPICards({ counts }: { counts: Counts }) {
       borderColor: "border-green-200",
     },
     {
-      label: "Từ chối hôm nay",
-      value: counts.REJECTED_TODAY || 0,
+      label: "Bị khoá",
+      value: counts.LOCKED || 0,
+      icon: Lock,
+      color: "orange",
+      bgColor: "bg-orange-100",
+      textColor: "text-orange-700",
+      borderColor: "border-orange-200",
+    },
+    {
+      label: "Từ chối",
+      value: counts.REJECTED || 0,
       icon: XCircle,
       color: "red",
       bgColor: "bg-red-100",
@@ -145,37 +244,207 @@ function KPICards({ counts }: { counts: Counts }) {
       borderColor: "border-red-200",
     },
     {
-      label: "Tổng yêu cầu",
-      value: counts.ALL || 0,
-      icon: FileText,
-      color: "blue",
-      bgColor: "bg-blue-100",
-      textColor: "text-blue-700",
-      borderColor: "border-blue-200",
+      label: "Duyệt hôm nay",
+      value: counts.APPROVED_TODAY || 0,
+      subLabel: `Từ chối: ${counts.REJECTED_TODAY || 0}`,
+      icon: TrendingUp,
+      color: "purple",
+      bgColor: "bg-purple-100",
+      textColor: "text-purple-700",
+      borderColor: "border-purple-200",
     },
   ]
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-      {items.map((item) => {
-        const Icon = item.icon
-        return (
-          <Card key={item.label} className={cn("border", item.borderColor)}>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center shrink-0", item.bgColor)}>
-                  <Icon className={cn("h-5 w-5", item.textColor)} />
+    <div className="space-y-4 mb-6">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        {kpiItems.map((item) => {
+          const Icon = item.icon
+          return (
+            <Card key={item.label} className={cn("border", item.borderColor)}>
+              <CardContent className="p-3">
+                <div className="flex items-center gap-2">
+                  <div className={cn("h-9 w-9 rounded-lg flex items-center justify-center shrink-0", item.bgColor)}>
+                    <Icon className={cn("h-4 w-4", item.textColor)} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground truncate">{item.label}</p>
+                    <p className="text-lg font-bold leading-tight">{item.value}</p>
+                    {item.subLabel && (
+                      <p className="text-[10px] text-muted-foreground leading-tight">{item.subLabel}</p>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">{item.label}</p>
-                  <p className="text-xl font-bold">{item.value}</p>
+              </CardContent>
+            </Card>
+          )
+        })}
+      </div>
+
+      {/* Charts */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Bar Chart - 7-day growth */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <BarChart3 className="h-4 w-4 text-primary" />
+              <p className="text-sm font-semibold">Duyệt seller 7 ngày gần nhất</p>
+            </div>
+            {chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={180}>
+                <BarChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                  <Tooltip
+                    contentStyle={{ borderRadius: 8, fontSize: 12 }}
+                    formatter={(v) => [`${v} yêu cầu`, "Đã duyệt"]}
+                  />
+                  <Bar dataKey="approved" fill="#22c55e" radius={[4, 4, 0, 0]} name="Đã duyệt" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[180px] flex items-center justify-center text-muted-foreground text-sm">
+                Chưa có dữ liệu
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Pie Chart - Status distribution */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <PieChart className="h-4 w-4 text-primary" />
+              <p className="text-sm font-semibold">Phân bổ trạng thái</p>
+            </div>
+            {pieData.length > 0 ? (
+              <div className="flex items-center gap-4">
+                <ResponsiveContainer width="60%" height={180}>
+                  <RePieChart>
+                    <Pie
+                      data={pieData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={45}
+                      outerRadius={75}
+                      paddingAngle={3}
+                      dataKey="value"
+                    >
+                      {pieData.map((entry, index) => (
+                        <Cell key={index} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(v) => [v, ""]} />
+                  </RePieChart>
+                </ResponsiveContainer>
+                <div className="space-y-2 min-w-0">
+                  {pieData.map((item) => (
+                    <div key={item.name} className="flex items-center gap-2">
+                      <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                      <span className="text-xs text-muted-foreground truncate">{item.name}</span>
+                      <span className="text-xs font-semibold ml-auto">({item.value})</span>
+                    </div>
+                  ))}
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        )
-      })}
+            ) : (
+              <div className="h-[180px] flex items-center justify-center text-muted-foreground text-sm">
+                Chưa có dữ liệu
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
+  )
+}
+
+// ============ PRODUCTS DIALOG ============
+function ProductsDialog({
+  sellerId,
+  sellerName,
+  open,
+  onClose,
+}: {
+  sellerId: string
+  sellerName: string
+  open: boolean
+  onClose: () => void
+}) {
+  const [products, setProducts] = React.useState<Product[]>([])
+  const [loading, setLoading] = React.useState(false)
+
+  React.useEffect(() => {
+    if (!open || !sellerId) return
+    setLoading(true)
+    fetch(`/api/admin/sellers/${sellerId}/products`)
+      .then((res) => res.ok ? res.json() : Promise.resolve({ products: [] }))
+      .then((data) => setProducts(data.products || []))
+      .catch(() => setProducts([]))
+      .finally(() => setLoading(false))
+  }, [open, sellerId])
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Sản phẩm của {sellerName}</DialogTitle>
+          <DialogDescription>
+            Danh sách tất cả sản phẩm đã đăng ({products.length})
+          </DialogDescription>
+        </DialogHeader>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin" />
+          </div>
+        ) : products.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <Package className="h-12 w-12 mx-auto mb-3 opacity-50" />
+            <p>Chưa có sản phẩm nào</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {products.map((product) => (
+              <div key={product.id} className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/30 transition-colors">
+                <div className="w-14 h-14 rounded-lg overflow-hidden bg-muted shrink-0">
+                  {product.images[0]?.url ? (
+                    <img src={product.images[0].url} alt={product.title} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Image className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm line-clamp-1">{product.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {product.brand?.name} • {product.category?.name} • {product.condition}
+                  </p>
+                  <p className="text-sm font-semibold text-primary">
+                    {Number(product.price).toLocaleString("vi-VN")}đ
+                  </p>
+                </div>
+                <Badge
+                  className={cn(
+                    product.status === "ACTIVE" ? "bg-green-100 text-green-700" :
+                    product.status === "HIDDEN" ? "bg-gray-100 text-gray-600" :
+                    product.status === "PENDING" ? "bg-yellow-100 text-yellow-700" :
+                    "bg-red-100 text-red-700"
+                  )}
+                >
+                  {product.status === "ACTIVE" ? "Đang bán" :
+                   product.status === "HIDDEN" ? "Đã ẩn" :
+                   product.status === "PENDING" ? "Chờ duyệt" : "Từ chối"}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -184,14 +453,22 @@ function ApplicationCard({
   application,
   onApprove,
   onReject,
+  onLock,
+  onUnlock,
   onViewProfile,
+  onViewProducts,
 }: {
   application: SellerApplication
   onApprove: () => void
   onReject: () => void
+  onLock: () => void
+  onUnlock: () => void
   onViewProfile: () => void
+  onViewProducts: () => void
 }) {
-  const config = statusConfig[application.sellerStatus] || statusConfig.PENDING
+  const config = application.isLocked
+    ? statusConfig.LOCKED
+    : (statusConfig[application.sellerStatus as keyof typeof statusConfig] || statusConfig.PENDING)
 
   return (
     <Card className="border overflow-hidden hover:shadow-md transition-shadow">
@@ -221,6 +498,12 @@ function ApplicationCard({
                     Đã xác minh
                   </Badge>
                 )}
+                {application.idCardFrontUrl && application.idCardBackUrl && (
+                  <Badge className="bg-purple-100 text-purple-700">
+                    <CreditCard className="h-3 w-3 mr-1" />
+                    Đã gửi CCCD
+                  </Badge>
+                )}
               </div>
 
               <div className="mt-1.5 space-y-0.5">
@@ -235,6 +518,16 @@ function ApplicationCard({
                   </p>
                 )}
               </div>
+
+              {/* Locked reason */}
+              {application.isLocked && application.lockedReason && (
+                <div className="mt-2 p-2 bg-red-50 rounded-lg border border-red-100">
+                  <p className="text-xs text-red-600 flex items-center gap-1.5">
+                    <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                    <span className="font-medium">Lý do khoá:</span> {application.lockedReason}
+                  </p>
+                </div>
+              )}
 
               {/* Reject reason */}
               {application.sellerStatus === "REJECTED" && application.sellerRejectedReason && (
@@ -270,6 +563,13 @@ function ApplicationCard({
             Xem hồ sơ
           </Button>
 
+          {application.sellerStatus === "APPROVED" && (
+            <Button size="sm" variant="outline" onClick={onViewProducts}>
+              <Package className="h-4 w-4 mr-1.5" />
+              Sản phẩm ({application._count.products})
+            </Button>
+          )}
+
           {application.sellerStatus === "PENDING" && (
             <>
               <Button size="sm" onClick={onApprove}>
@@ -289,6 +589,23 @@ function ApplicationCard({
               Duyệt lại
             </Button>
           )}
+
+          {/* Lock/Unlock for approved sellers */}
+          {application.sellerStatus === "APPROVED" && (
+            <>
+              {application.isLocked ? (
+                <Button size="sm" variant="outline" onClick={onUnlock}>
+                  <RotateCcw className="h-4 w-4 mr-1.5" />
+                  Mở khoá
+                </Button>
+              ) : (
+                <Button size="sm" variant="outline" className="text-orange-600 hover:text-orange-700" onClick={onLock}>
+                  <XCircle className="h-4 w-4 mr-1.5" />
+                  Khoá
+                </Button>
+              )}
+            </>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -302,16 +619,24 @@ function ApplicationDetailDrawer({
   onClose,
   onApprove,
   onReject,
+  onLock,
+  onUnlock,
+  onViewProducts,
 }: {
   application: SellerApplication | null
   open: boolean
   onClose: () => void
   onApprove: () => void
   onReject: () => void
+  onLock: () => void
+  onUnlock: () => void
+  onViewProducts: () => void
 }) {
   if (!application) return null
 
-  const config = statusConfig[application.sellerStatus] || statusConfig.PENDING
+  const config = application.isLocked
+    ? statusConfig.LOCKED
+    : (statusConfig[application.sellerStatus as keyof typeof statusConfig] || statusConfig.PENDING)
 
   return (
     <>
@@ -381,11 +706,11 @@ function ApplicationDetailDrawer({
                 </div>
                 <span className={cn(
                   "text-xs font-medium px-2 py-0.5 rounded",
-                  application.sellerStats?.isIdentityVerified
+                  application.idCardFrontUrl && application.idCardBackUrl
                     ? "bg-green-100 text-green-700"
                     : "bg-yellow-100 text-yellow-700"
                 )}>
-                  {application.sellerStats?.isIdentityVerified ? "Đã xác minh" : "Chưa xác minh"}
+                  {application.idCardFrontUrl && application.idCardBackUrl ? "Đã upload" : "Chưa đầy đủ"}
                 </span>
               </div>
               <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
@@ -408,6 +733,105 @@ function ApplicationDetailDrawer({
               </div>
             </div>
           </div>
+
+          {/* CCCD Images */}
+          {(application.idCardFrontUrl || application.idCardBackUrl) && (
+            <div>
+              <p className="text-sm font-medium mb-3 flex items-center gap-2">
+                <CreditCard className="h-4 w-4 text-muted-foreground" />
+                Hình ảnh CCCD
+              </p>
+
+              {(application.idCardNumber || application.idCardName) && (
+                <div className="mb-3 p-3 bg-blue-50/50 border border-blue-200 rounded-lg space-y-1.5">
+                  {application.idCardNumber && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Số CCCD:</span>
+                      <span className="font-mono font-semibold tracking-wide">{application.idCardNumber}</span>
+                    </div>
+                  )}
+                  {application.idCardName && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Họ tên:</span>
+                      <span className="font-semibold uppercase">{application.idCardName}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-3">
+                {application.idCardFrontUrl && (
+                  <a
+                    href={application.idCardFrontUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group relative block aspect-[3/2] rounded-lg overflow-hidden border-2 border-muted hover:border-primary transition-colors bg-muted"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={application.idCardFrontUrl}
+                      alt="CCCD mặt trước"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 text-white text-xs font-medium bg-black/60 px-2 py-1 rounded">
+                        <ZoomIn className="h-3 w-3" />
+                        Phóng to
+                      </div>
+                    </div>
+                    <div className="absolute top-1.5 left-1.5 bg-white/90 backdrop-blur-sm px-1.5 py-0.5 rounded text-[10px] font-semibold text-foreground">
+                      Mặt trước
+                    </div>
+                  </a>
+                )}
+                {application.idCardBackUrl && (
+                  <a
+                    href={application.idCardBackUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group relative block aspect-[3/2] rounded-lg overflow-hidden border-2 border-muted hover:border-primary transition-colors bg-muted"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={application.idCardBackUrl}
+                      alt="CCCD mặt sau"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 text-white text-xs font-medium bg-black/60 px-2 py-1 rounded">
+                        <ZoomIn className="h-3 w-3" />
+                        Phóng to
+                      </div>
+                    </div>
+                    <div className="absolute top-1.5 left-1.5 bg-white/90 backdrop-blur-sm px-1.5 py-0.5 rounded text-[10px] font-semibold text-foreground">
+                      Mặt sau
+                    </div>
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Business Address */}
+          {application.addresses && application.addresses.length > 0 && (
+            <div>
+              <p className="text-sm font-medium mb-3 flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-muted-foreground" />
+                Địa chỉ kinh doanh
+              </p>
+              {application.addresses.map((addr) => (
+                <div key={addr.id} className="p-3 bg-muted/50 rounded-lg space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-medium text-sm">{addr.fullName}</span>
+                    <span className="text-xs text-muted-foreground">{addr.phone}</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {[addr.street, addr.wardName, addr.provinceName].filter(Boolean).join(", ")}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Timeline */}
           <div>
@@ -498,9 +922,96 @@ function ApplicationDetailDrawer({
               </Button>
             </div>
           )}
+
+          {application.sellerStatus === "APPROVED" && (
+            <>
+              <div className="flex items-center gap-2 pt-4 border-t">
+                <Button size="sm" variant="outline" className="flex-1" onClick={onViewProducts}>
+                  <Package className="h-4 w-4 mr-1.5" />
+                  Xem sản phẩm ({application._count.products})
+                </Button>
+                {application.isLocked ? (
+                  <Button size="sm" className="flex-1" onClick={onUnlock}>
+                    <RotateCcw className="h-4 w-4 mr-1.5" />
+                    Mở khoá
+                  </Button>
+                ) : (
+                  <Button size="sm" variant="destructive" className="flex-1" onClick={onLock}>
+                    <XCircle className="h-4 w-4 mr-1.5" />
+                    Khoá
+                  </Button>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </>
+  )
+}
+
+// ============ LOCK/UNLOCK DIALOG ============
+function LockDialog({
+  open,
+  onClose,
+  action,
+  reason,
+  onReasonChange,
+  onConfirm,
+  isSubmitting,
+}: {
+  open: boolean
+  onClose: () => void
+  action: "LOCK" | "UNLOCK" | null
+  reason: string
+  onReasonChange: (v: string) => void
+  onConfirm: () => void
+  isSubmitting: boolean
+}) {
+  if (!action) return null
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>
+            {action === "LOCK" ? "Khoá cửa hàng" : "Mở khoá cửa hàng"}
+          </DialogTitle>
+          <DialogDescription>
+            {action === "LOCK"
+              ? "Cửa hàng sẽ bị tạm khoá. Tất cả sản phẩm sẽ bị ẩn đi cho đến khi được mở khoá."
+              : "Cửa hàng sẽ được mở khoá. Tất cả sản phẩm sẽ được hiển thị trở lại."}
+          </DialogDescription>
+        </DialogHeader>
+
+        {action === "LOCK" && (
+          <div className="space-y-2">
+            <Label htmlFor="lock-reason">Lý do khoá</Label>
+            <Textarea
+              id="lock-reason"
+              placeholder="Ví dụ: Vi phạm quy định, nhiều khách hàng report..."
+              value={reason}
+              onChange={(e) => onReasonChange(e.target.value)}
+              rows={3}
+            />
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Huỷ
+          </Button>
+          <Button
+            variant={action === "LOCK" ? "destructive" : "default"}
+            onClick={onConfirm}
+            disabled={isSubmitting || (action === "LOCK" && !reason.trim())}
+          >
+            {isSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            {action === "LOCK" ? "Xác nhận khoá" : "Xác nhận mở khoá"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -510,7 +1021,8 @@ export default function AdminSellersPage() {
   const { data: session, status } = useSession()
 
   const [applications, setApplications] = React.useState<SellerApplication[]>([])
-  const [counts, setCounts] = React.useState<Counts>({ ALL: 0, PENDING: 0, APPROVED: 0, REJECTED: 0, APPROVED_TODAY: 0, REJECTED_TODAY: 0 })
+  const [counts, setCounts] = React.useState<Counts>({ ALL: 0, PENDING: 0, APPROVED: 0, REJECTED: 0, ACTIVE: 0, LOCKED: 0, APPROVED_TODAY: 0, REJECTED_TODAY: 0, PENDING_TODAY: 0 })
+  const [chartData, setChartData] = React.useState<ChartDay[]>([])
   const [pagination, setPagination] = React.useState<Pagination | null>(null)
   const [loading, setLoading] = React.useState(true)
 
@@ -522,12 +1034,21 @@ export default function AdminSellersPage() {
   const [detailApplication, setDetailApplication] = React.useState<SellerApplication | null>(null)
   const [drawerOpen, setDrawerOpen] = React.useState(false)
 
+  // Products dialog
+  const [productsDialogOpen, setProductsDialogOpen] = React.useState(false)
+  const [productsSeller, setProductsSeller] = React.useState<SellerApplication | null>(null)
+
   // Moderate dialog
   const [showModerateDialog, setShowModerateDialog] = React.useState(false)
   const [selectedApplication, setSelectedApplication] = React.useState<SellerApplication | null>(null)
   const [moderateAction, setModerateAction] = React.useState<"APPROVE" | "REJECT" | null>(null)
   const [rejectReason, setRejectReason] = React.useState("")
   const [isSubmitting, setIsSubmitting] = React.useState(false)
+
+  // Lock/Unlock dialog
+  const [showLockDialog, setShowLockDialog] = React.useState(false)
+  const [lockAction, setLockAction] = React.useState<"LOCK" | "UNLOCK" | null>(null)
+  const [lockReason, setLockReason] = React.useState("")
 
   // Auth check
   React.useEffect(() => {
@@ -555,6 +1076,7 @@ export default function AdminSellersPage() {
         setApplications(data.sellers || [])
         setPagination(data.pagination || null)
         setCounts(data.counts || {})
+        setChartData(data.chartData || [])
       }
     } catch (error) {
       console.error("Error fetching applications:", error)
@@ -575,12 +1097,68 @@ export default function AdminSellersPage() {
     setDrawerOpen(true)
   }
 
+  const handleViewProducts = (application: SellerApplication) => {
+    setProductsSeller(application)
+    setProductsDialogOpen(true)
+    setDrawerOpen(false)
+  }
+
   const handleOpenModerate = (application: SellerApplication, action: "APPROVE" | "REJECT") => {
     setSelectedApplication(application)
     setModerateAction(action)
     setRejectReason("")
     setShowModerateDialog(true)
     setDrawerOpen(false)
+  }
+
+  const handleOpenLock = (application: SellerApplication, action: "LOCK" | "UNLOCK") => {
+    setSelectedApplication(application)
+    setLockAction(action)
+    setLockReason("")
+    setShowLockDialog(true)
+    setDrawerOpen(false)
+  }
+
+  const handleSubmitLock = async () => {
+    if (!selectedApplication || !lockAction) return
+
+    if (lockAction === "LOCK" && !lockReason.trim()) {
+      alert("Vui lòng nhập lý do khoá")
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      const res = await fetch(`/api/admin/sellers/${selectedApplication.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: lockAction,
+          reason: lockReason,
+        }),
+      })
+
+      if (res.ok) {
+        setShowLockDialog(false)
+        fetchApplications()
+        // Cap nhat trang thai khoa cua seller trong drawer
+        if (detailApplication && lockAction) {
+          setDetailApplication({
+            ...detailApplication,
+            isLocked: lockAction === "LOCK",
+            lockedReason: lockAction === "LOCK" ? lockReason : null,
+          })
+        }
+      } else {
+        const data = await res.json()
+        alert(data.error || "Có lỗi xảy ra")
+      }
+    } catch (error) {
+      console.error("Error:", error)
+      alert("Có lỗi xảy ra")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleSubmitModerate = async () => {
@@ -605,6 +1183,14 @@ export default function AdminSellersPage() {
       if (res.ok) {
         setShowModerateDialog(false)
         fetchApplications()
+        // Cap nhat trang thai cua seller trong drawer
+        if (detailApplication && moderateAction) {
+          setDetailApplication({
+            ...detailApplication,
+            sellerStatus: moderateAction === "APPROVE" ? "APPROVED" : "REJECTED",
+            sellerRejectedReason: moderateAction === "REJECT" ? rejectReason : detailApplication.sellerRejectedReason,
+          })
+        }
       } else {
         const data = await res.json()
         alert(data.error || "Có lỗi xảy ra")
@@ -673,8 +1259,8 @@ export default function AdminSellersPage() {
           </div>
         </div>
 
-        {/* KPI Cards */}
-        <KPICards counts={counts} />
+        {/* Stats & Charts */}
+        <StatsSection counts={counts} chartData={chartData} />
 
         {/* Applications List */}
         <div className="space-y-3">
@@ -694,7 +1280,10 @@ export default function AdminSellersPage() {
                 application={application}
                 onApprove={() => handleOpenModerate(application, "APPROVE")}
                 onReject={() => handleOpenModerate(application, "REJECT")}
+                onLock={() => handleOpenLock(application, "LOCK")}
+                onUnlock={() => handleOpenLock(application, "UNLOCK")}
                 onViewProfile={() => handleViewProfile(application)}
+                onViewProducts={() => handleViewProducts(application)}
               />
             ))
           )}
@@ -738,6 +1327,17 @@ export default function AdminSellersPage() {
         onClose={() => setDrawerOpen(false)}
         onApprove={() => detailApplication && handleOpenModerate(detailApplication, "APPROVE")}
         onReject={() => detailApplication && handleOpenModerate(detailApplication, "REJECT")}
+        onLock={() => detailApplication && handleOpenLock(detailApplication, "LOCK")}
+        onUnlock={() => detailApplication && handleOpenLock(detailApplication, "UNLOCK")}
+        onViewProducts={() => detailApplication && handleViewProducts(detailApplication)}
+      />
+
+      {/* Products Dialog */}
+      <ProductsDialog
+        sellerId={productsSeller?.id || ""}
+        sellerName={productsSeller?.name || ""}
+        open={productsDialogOpen}
+        onClose={() => setProductsDialogOpen(false)}
       />
 
       {/* Moderate Dialog */}
@@ -804,6 +1404,17 @@ export default function AdminSellersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Lock Dialog */}
+      <LockDialog
+        open={showLockDialog}
+        onClose={() => setShowLockDialog(false)}
+        action={lockAction}
+        reason={lockReason}
+        onReasonChange={setLockReason}
+        onConfirm={handleSubmitLock}
+        isSubmitting={isSubmitting}
+      />
     </div>
   )
 }

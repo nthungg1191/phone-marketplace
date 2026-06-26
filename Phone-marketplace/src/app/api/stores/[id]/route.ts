@@ -26,7 +26,8 @@ export async function GET(
         avatar: true,
         phone: true,
         sellerRank: true,
-        sellerStatus: true,
+        isLocked: true,
+        lockedReason: true,
         createdAt: true,
         sellerStats: {
           select: {
