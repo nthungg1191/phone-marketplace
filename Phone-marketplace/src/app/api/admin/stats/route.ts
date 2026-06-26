@@ -110,11 +110,10 @@ export async function GET() {
 
     // ========== ACTION CENTER - PENDING TASKS ==========
 
-    // Seller chờ duyệt
+    // Seller chờ duyệt — user đã request (role vẫn BUYER, sellerStatus = PENDING)
     const pendingSellers = await prisma.user.count({
-      where: { 
-        role: "SELLER", 
-        sellerStatus: "PENDING" 
+      where: {
+        sellerStatus: "PENDING"
       }
     })
 
@@ -240,10 +239,10 @@ export async function GET() {
       link?: string
     }> = []
 
-    // Recent seller registrations
+    // Recent seller registrations (role BUYER, sellerStatus changes)
     const recentSellers = await prisma.user.findMany({
-      where: { 
-        role: "SELLER",
+      where: {
+        sellerStatus: { in: ["PENDING", "APPROVED", "REJECTED"] },
         createdAt: { gte: sevenDaysAgo }
       },
       orderBy: { createdAt: "desc" },
@@ -251,6 +250,7 @@ export async function GET() {
       select: {
         id: true,
         name: true,
+        role: true,
         sellerStatus: true,
         createdAt: true
       }

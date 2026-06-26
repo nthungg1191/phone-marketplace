@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { Breadcrumb } from "@/components/shared/breadcrumb"
 import {
@@ -80,6 +80,7 @@ const statusLabels: Record<string, { label: string; color: string }> = {
 
 export default function AdminProductsPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { data: session, status } = useSession()
 
   const [products, setProducts] = React.useState<Product[]>([])
@@ -90,6 +91,14 @@ export default function AdminProductsPage() {
   const [statusFilter, setStatusFilter] = React.useState("ALL")
   const [searchQuery, setSearchQuery] = React.useState("")
   const [currentPage, setCurrentPage] = React.useState(1)
+  const [sellerIdFilter, setSellerIdFilter] = React.useState<string | null>(null)
+
+  // Sync sellerId from URL params (set when navigating from admin/users)
+  React.useEffect(() => {
+    if (!searchParams) return
+    const sid = searchParams.get("sellerId")
+    setSellerIdFilter(sid)
+  }, [searchParams])
 
   // Moderate dialog
   const [showModerateDialog, setShowModerateDialog] = React.useState(false)
@@ -116,6 +125,8 @@ export default function AdminProductsPage() {
       const params = new URLSearchParams()
       if (statusFilter !== "ALL") params.set("status", statusFilter)
       params.set("page", currentPage.toString())
+      const sid = searchParams?.get("sellerId")
+      if (sid) params.set("sellerId", sid)
 
       const res = await fetch(`/api/admin/products?${params.toString()}`)
       if (res.ok) {
@@ -128,7 +139,7 @@ export default function AdminProductsPage() {
     } finally {
       setLoading(false)
     }
-  }, [statusFilter, currentPage, status, session])
+  }, [statusFilter, currentPage, searchParams, status, session])
 
   React.useEffect(() => {
     if (status === "authenticated" && session?.user?.role === "ADMIN") {

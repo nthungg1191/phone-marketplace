@@ -16,6 +16,8 @@ export async function GET(request: Request) {
     const search = searchParams.get("search") || ""
     const page = parseInt(searchParams.get("page") || "1")
     const limit = parseInt(searchParams.get("limit") || "20")
+    const userId = searchParams.get("userId")
+    const sellerId = searchParams.get("sellerId")
 
     const where: Record<string, unknown> = {}
 
@@ -25,6 +27,14 @@ export async function GET(request: Request) {
 
     if (paymentStatus) {
       where.paymentStatus = paymentStatus
+    }
+
+    if (userId) {
+      where.buyerId = userId
+    }
+
+    if (sellerId) {
+      where.sellerId = sellerId
     }
 
     if (search) {

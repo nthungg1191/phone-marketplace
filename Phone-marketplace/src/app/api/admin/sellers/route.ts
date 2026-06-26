@@ -19,8 +19,11 @@ export async function GET(request: Request) {
 
     const where: Record<string, unknown> = {}
 
+    // Exclude NONE users — they are regular buyers who never requested to be sellers
     if (status) {
       where.sellerStatus = status
+    } else {
+      where.sellerStatus = { not: "NONE" }
     }
 
     const sellers = await prisma.user.findMany({
@@ -55,14 +58,15 @@ export async function GET(request: Request) {
       orderBy: { createdAt: "desc" },
     })
 
-    // Đếm số lượng theo từng status
+    // Count only real seller statuses (exclude NONE)
     const counts = await prisma.user.groupBy({
       by: ["sellerStatus"],
       _count: true,
+      where: { sellerStatus: { not: "NONE" } },
     })
 
     const statusCounts = {
-      NONE: 0,
+      ALL: 0,
       PENDING: 0,
       APPROVED: 0,
       REJECTED: 0,
@@ -71,6 +75,7 @@ export async function GET(request: Request) {
     counts.forEach((c: { sellerStatus: string; _count: number }) => {
       if (c.sellerStatus && statusCounts[c.sellerStatus as keyof typeof statusCounts] !== undefined) {
         statusCounts[c.sellerStatus as keyof typeof statusCounts] = c._count
+        statusCounts.ALL += c._count
       }
     })
 

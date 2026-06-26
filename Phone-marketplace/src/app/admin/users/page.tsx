@@ -152,6 +152,16 @@ const roleLabels: Record<string, { label: string; color: string }> = {
   ADMIN: { label: "Quản trị", color: "bg-purple-100 text-purple-800" },
 }
 
+const LOCK_REASONS = [
+  { value: "Vi phạm quy định sử dụng", label: "Vi phạm quy định sử dụng" },
+  { value: "Đăng sản phẩm vi phạm", label: "Đăng sản phẩm vi phạm" },
+  { value: "Lừa đảo hoặc gian lận", label: "Lừa đảo hoặc gian lận" },
+  { value: "Spam hoặc quấy rối", label: "Spam hoặc quấy rối" },
+  { value: "Tài khoản giả mạo", label: "Tài khoản giả mạo" },
+  { value: "Yêu cầu từ cơ quan chức năng", label: "Yêu cầu từ cơ quan chức năng" },
+  { value: "Bảo trì hệ thống", label: "Bảo trì hệ thống" },
+]
+
 // ============ KPI CARDS ============
 function KPICards({ counts }: { counts: Counts }) {
   const items = [
@@ -267,12 +277,36 @@ function UserDetailDrawer({
   user,
   open,
   onClose,
+  onLock,
 }: {
   user: User | null
   open: boolean
   onClose: () => void
+  onLock: (userId: string, action: "LOCK" | "UNLOCK", reason?: string) => Promise<void>
 }) {
+  const [showLockDialog, setShowLockDialog] = React.useState(false)
+  const [lockReason, setLockReason] = React.useState("")
+  const [lockAction, setLockAction] = React.useState<"LOCK" | "UNLOCK">("LOCK")
+  const [isSubmitting, setIsSubmitting] = React.useState(false)
+
   if (!user) return null
+
+  const handleLockClick = () => {
+    setLockAction(user.isLocked ? "UNLOCK" : "LOCK")
+    setLockReason("")
+    setShowLockDialog(true)
+  }
+
+  const handleConfirmLock = async () => {
+    if (lockAction === "LOCK" && !lockReason.trim()) return
+    setIsSubmitting(true)
+    try {
+      await onLock(user.id, lockAction, lockAction === "LOCK" ? lockReason.trim() : undefined)
+      setShowLockDialog(false)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   const status = getUserStatus(user)
   const statusInfo = statusConfig[status]
@@ -419,6 +453,8 @@ function UserDetailDrawer({
                 variant={user.isLocked ? "default" : "outline"}
                 size="sm"
                 className={user.isLocked ? "" : "text-red-600 hover:text-red-700"}
+                onClick={handleLockClick}
+                disabled={isSubmitting}
               >
                 {user.isLocked ? (
                   <>
@@ -435,67 +471,66 @@ function UserDetailDrawer({
             </div>
           </div>
         </div>
+
+        {/* Lock / Unlock Dialog */}
+        <Dialog open={showLockDialog} onOpenChange={setShowLockDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                {lockAction === "LOCK" ? "Khóa tài khoản" : "Mở khóa tài khoản"}
+              </DialogTitle>
+              <DialogDescription>
+                {lockAction === "LOCK"
+                  ? "Vui lòng chọn hoặc nhập lý do khóa tài khoản này."
+                  : "Xác nhận mở khóa tài khoản này. Người dùng sẽ có thể đăng nhập lại."}
+              </DialogDescription>
+            </DialogHeader>
+            {lockAction === "LOCK" && (
+              <div className="space-y-3 py-2">
+                <div className="flex flex-wrap gap-2">
+                  {LOCK_REASONS.map((reason) => (
+                    <button
+                      key={reason.value}
+                      type="button"
+                      onClick={() => setLockReason(reason.value)}
+                      className={cn(
+                        "px-3 py-1.5 text-sm rounded-full border transition-colors",
+                        lockReason === reason.value
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background hover:bg-muted border-muted-foreground/20"
+                      )}
+                    >
+                      {reason.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="relative">
+                  <Label htmlFor="custom-reason" className="sr-only">Lý do khác</Label>
+                  <Input
+                    id="custom-reason"
+                    placeholder="Hoặc nhập lý do khác..."
+                    value={lockReason}
+                    onChange={(e) => setLockReason(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowLockDialog(false)}>
+                Hủy
+              </Button>
+              <Button
+                variant={lockAction === "LOCK" ? "destructive" : "default"}
+                onClick={handleConfirmLock}
+                disabled={lockAction === "LOCK" && !lockReason.trim()}
+              >
+                {lockAction === "LOCK" ? "Xác nhận khóa" : "Xác nhận mở khóa"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </>
-  )
-}
-
-// ============ BULK ACTION BAR ============
-function BulkActionBar({
-  selected,
-  onClear,
-  onLock,
-}: {
-  selected: Set<string>
-  onClear: () => void
-  onLock: () => void
-}) {
-  if (selected.size === 0) return null
-
-  return (
-    <div className="sticky top-0 z-10 bg-primary text-primary-foreground px-4 py-2.5 flex items-center justify-between rounded-lg mb-3 shadow-lg">
-      <span className="text-sm font-medium">
-        Đã chọn {selected.size} người dùng
-      </span>
-      <div className="flex items-center gap-2">
-        <Button
-          size="sm"
-          variant="secondary"
-          className="h-8"
-          onClick={onLock}
-        >
-          <Lock className="h-4 w-4 mr-1.5" />
-          Khóa tài khoản
-        </Button>
-        <Button
-          size="sm"
-          variant="secondary"
-          className="h-8"
-          onClick={() => {}}
-        >
-          <Bell className="h-4 w-4 mr-1.5" />
-          Gửi thông báo
-        </Button>
-        <Button
-          size="sm"
-          variant="secondary"
-          className="h-8"
-          onClick={() => {}}
-        >
-          <Download className="h-4 w-4 mr-1.5" />
-          Xuất CSV
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-8 text-primary-foreground hover:bg-primary-foreground/20"
-          onClick={onClear}
-        >
-          <X className="h-4 w-4 mr-1.5" />
-          Bỏ chọn
-        </Button>
-      </div>
-    </div>
   )
 }
 
@@ -549,9 +584,6 @@ export default function AdminUsersPage() {
   const [sortField, setSortField] = React.useState("createdAt")
   const [sortDir, setSortDir] = React.useState<"asc" | "desc">("desc")
 
-  // Bulk selection
-  const [selectedUsers, setSelectedUsers] = React.useState<Set<string>>(new Set())
-
   // Detail drawer
   const [detailUser, setDetailUser] = React.useState<User | null>(null)
   const [drawerOpen, setDrawerOpen] = React.useState(false)
@@ -602,7 +634,6 @@ export default function AdminUsersPage() {
         setUsers(data.users || [])
         setPagination(data.pagination || null)
         setCounts(data.counts || {})
-        setSelectedUsers(new Set())
       }
     } catch (error) {
       console.error("Error fetching users:", error)
@@ -660,24 +691,34 @@ export default function AdminUsersPage() {
     }
   }
 
-  // Bulk actions
-  const toggleSelectAll = () => {
-    if (selectedUsers.size === users.length) {
-      setSelectedUsers(new Set())
-    } else {
-      setSelectedUsers(new Set(users.map((u) => u.id)))
+  // Handle lock/unlock from detail drawer
+  const handleLockUser = async (userId: string, action: "LOCK" | "UNLOCK", reason?: string) => {
+    setIsSubmitting(true)
+    try {
+      const body: Record<string, unknown> = { action }
+      if (action === "LOCK" && reason) body.reason = reason
+
+      const res = await fetch(`/api/admin/users/${userId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      })
+
+      if (res.ok) {
+        fetchUsers()
+        setDrawerOpen(false)
+      } else {
+        const data = await res.json()
+        alert(data.error || "Có lỗi xảy ra")
+      }
+    } catch (error) {
+      console.error("Error:", error)
+      alert("Có lỗi xảy ra")
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
-  const toggleSelect = (id: string) => {
-    const next = new Set(selectedUsers)
-    if (next.has(id)) {
-      next.delete(id)
-    } else {
-      next.add(id)
-    }
-    setSelectedUsers(next)
-  }
 
   const getActionDialogContent = () => {
     switch (actionType) {
@@ -754,27 +795,12 @@ export default function AdminUsersPage() {
         {/* KPI Cards */}
         <KPICards counts={counts} />
 
-        {/* Bulk Action Bar */}
-        <BulkActionBar
-          selected={selectedUsers}
-          onClear={() => setSelectedUsers(new Set())}
-          onLock={() => {}}
-        />
-
         {/* Users Table */}
         <div className="bg-white rounded-lg border overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-muted/50">
                 <tr>
-                  <th className="px-4 py-3 w-10">
-                    <input
-                      type="checkbox"
-                      checked={selectedUsers.size === users.length && users.length > 0}
-                      onChange={toggleSelectAll}
-                      className="h-4 w-4 rounded border-gray-300 cursor-pointer"
-                    />
-                  </th>
                   <th className="px-4 py-3 text-left">
                     <SortHeader label="Người dùng" field="name" currentSort={sortField} sortDir={sortDir} onSort={handleSort} />
                   </th>
@@ -804,20 +830,7 @@ export default function AdminUsersPage() {
                   </tr>
                 ) : (
                   users.map((user) => (
-                    <tr key={user.id} className={cn(
-                      "border-t hover:bg-muted/20 transition-colors",
-                      selectedUsers.has(user.id) && "bg-primary/5"
-                    )}>
-                      {/* Checkbox */}
-                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          checked={selectedUsers.has(user.id)}
-                          onChange={() => toggleSelect(user.id)}
-                          className="h-4 w-4 rounded border-gray-300 cursor-pointer"
-                        />
-                      </td>
-
+                    <tr key={user.id} className="border-t hover:bg-muted/20 transition-colors">
                       {/* User */}
                       <td className="px-4 py-3 cursor-pointer" onClick={() => handleRowClick(user)}>
                         <div className="flex items-center gap-3">
@@ -968,6 +981,7 @@ export default function AdminUsersPage() {
         user={detailUser}
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
+        onLock={handleLockUser}
       />
 
       {/* Action Dialog */}

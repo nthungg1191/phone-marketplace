@@ -25,7 +25,7 @@ const navGroups = [
     label: "Người dùng",
     items: [
       { label: "Người dùng", href: "/admin/users", icon: Users },
-      { label: "Duyệt Seller", href: "/admin/sellers", icon: Shield },
+      { label: "Người bán", href: "/admin/sellers", icon: Shield },
     ],
   },
   {
@@ -33,13 +33,11 @@ const navGroups = [
     items: [
       { label: "Sản phẩm", href: "/admin/products", icon: Package },
       { label: "Đơn hàng", href: "/admin/orders", icon: ShoppingBag },
-      { label: "Hoàn tiền", href: "/admin/orders?status=RETURN_PENDING", icon: ShoppingBag },
     ],
   },
   {
     label: "Danh mục",
     items: [
-      { label: "Danh mục", href: "/admin/categories", icon: Tag },
       { label: "Thương hiệu", href: "/admin/brands", icon: Tag },
     ],
   },

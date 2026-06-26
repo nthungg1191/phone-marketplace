@@ -76,11 +76,19 @@ export async function GET(request: Request) {
       _count: true,
     })
 
+    // Đếm locked / unverified riêng (không phụ thuộc vào role filter)
+    const [lockedCount, unverifiedCount] = await Promise.all([
+      prisma.user.count({ where: { isLocked: true } }),
+      prisma.user.count({ where: { isVerified: false } }),
+    ])
+
     const counts = {
       ALL: total,
       BUYER: 0,
       SELLER: 0,
       ADMIN: 0,
+      LOCKED: lockedCount,
+      UNVERIFIED: unverifiedCount,
     }
 
     roleCounts.forEach((c) => {

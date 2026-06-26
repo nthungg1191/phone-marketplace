@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Breadcrumb } from "@/components/shared/breadcrumb"
 import {
   ShoppingCart,
@@ -143,6 +143,7 @@ const formatDate = (date: string) => {
 
 export default function AdminOrdersPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { data: session, status } = useSession()
 
   const [orders, setOrders] = React.useState<Order[]>([])
@@ -152,6 +153,17 @@ export default function AdminOrdersPage() {
 
   const [statusFilter, setStatusFilter] = React.useState("ALL")
   const [searchQuery, setSearchQuery] = React.useState("")
+  const [userIdFilter, setUserIdFilter] = React.useState<string | null>(null)
+  const [sellerIdFilter, setSellerIdFilter] = React.useState<string | null>(null)
+
+  // Sync userId/sellerId from URL params (set when navigating from admin/users)
+  React.useEffect(() => {
+    if (!searchParams) return
+    const uid = searchParams.get("userId")
+    const sid = searchParams.get("sellerId")
+    setUserIdFilter(uid)
+    setSellerIdFilter(sid)
+  }, [searchParams])
 
   // Detail dialog
   const [showDetail, setShowDetail] = React.useState(false)
@@ -186,6 +198,10 @@ export default function AdminOrdersPage() {
       params.set("page", page.toString())
       if (statusFilter !== "ALL") params.set("status", statusFilter)
       if (searchQuery) params.set("search", searchQuery)
+      const uid = searchParams?.get("userId")
+      const sid = searchParams?.get("sellerId")
+      if (uid) params.set("userId", uid)
+      if (sid) params.set("sellerId", sid)
 
       const res = await fetch(`/api/admin/orders?${params.toString()}`)
       if (res.ok) {
@@ -203,7 +219,7 @@ export default function AdminOrdersPage() {
     } finally {
       setLoading(false)
     }
-  }, [statusFilter, searchQuery, status, session])
+  }, [statusFilter, searchQuery, searchParams, status, session])
 
   React.useEffect(() => {
     if (status === "authenticated" && session?.user?.role === "ADMIN") {
