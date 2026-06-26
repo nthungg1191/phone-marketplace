@@ -44,6 +44,50 @@ const createProductSchema = z.object({
   }).optional(),
 })
 
+// Partial update schema — used by handleStatusChange (seller/products page)
+// All fields are optional so a simple { status: "HIDDEN" } payload is valid.
+const partialUpdateSchema = z.object({
+  brandId: z.string().min(1).optional(),
+  modelId: z.string().min(1).optional(),
+  categoryId: z.string().min(1).optional(),
+  title: z.string().min(10).max(200).optional(),
+  description: z.string().max(5000).optional().nullable(),
+  condition: z.enum(["LIKE_NEW", "PERFECT_99", "EXCELLENT_98", "EXCELLENT_97", "GOOD"]).optional(),
+  ramGb: z.number().min(1).optional(),
+  storageGb: z.number().min(8).optional(),
+  color: z.string().min(1).optional(),
+  imei: z.string().optional().nullable(),
+  batteryHealth: z.number().min(0).max(100).optional(),
+  price: z.number().min(10000).optional(),
+  negotiable: z.boolean().optional(),
+  status: z.enum(["ACTIVE", "HIDDEN", "SOLD"]).optional(),
+  images: z.array(z.string()).optional(),
+  healthCheck: z.object({
+    serialNumber: z.string().optional(),
+    wifiMacAddress: z.string().optional(),
+    bluetoothMacAddress: z.string().optional(),
+    iosVersion: z.string().optional(),
+    androidVersion: z.string().optional(),
+    activationStatus: z.string().optional(),
+    jailbreakStatus: z.string().optional(),
+    securityLockStatus: z.string().optional(),
+    batteryCycleCount: z.number().optional(),
+    batteryHealth: z.number(),
+    screen: z.enum(["PASS", "FAIL", "NOT_TESTED"]).optional(),
+    cameraFront: z.enum(["PASS", "FAIL", "NOT_TESTED"]).optional(),
+    cameraBack: z.enum(["PASS", "FAIL", "NOT_TESTED"]).optional(),
+    speaker: z.enum(["PASS", "FAIL", "NOT_TESTED"]).optional(),
+    microphone: z.enum(["PASS", "FAIL", "NOT_TESTED"]).optional(),
+    wifi: z.enum(["PASS", "FAIL", "NOT_TESTED"]).optional(),
+    bluetooth: z.enum(["PASS", "FAIL", "NOT_TESTED"]).optional(),
+    fingerprint: z.enum(["PASS", "FAIL", "NOT_TESTED"]).optional(),
+    faceId: z.enum(["PASS", "FAIL", "NOT_TESTED"]).optional(),
+    chargingPort: z.enum(["PASS", "FAIL", "NOT_TESTED"]).optional(),
+    overallStatus: z.string().optional(),
+    notes: z.string().optional(),
+  }).optional(),
+})
+
 // GET /api/products/[id] - Chi tiết sản phẩm
 export async function GET(
   request: Request,
@@ -376,6 +420,165 @@ export async function PUT(
       return NextResponse.json({ error: error.issues[0].message }, { status: 400 })
     }
     console.error("PUT /api/products/[id] error:", error)
+    return NextResponse.json({ error: "Lỗi server" }, { status: 500 })
+  }
+}
+
+// PATCH /api/products/[id] - Cập nhật từng trường sản phẩm
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await auth()
+    if (!session?.user) {
+      return NextResponse.json({ error: "Vui lòng đăng nhập" }, { status: 401 })
+    }
+
+    const { id } = await params
+
+    // Get product and check ownership
+    const existingProduct = await prisma.product.findUnique({
+      where: { id },
+      select: { sellerId: true, status: true },
+    })
+
+    if (!existingProduct) {
+      return NextResponse.json({ error: "Không tìm thấy sản phẩm" }, { status: 404 })
+    }
+
+    if (existingProduct.sellerId !== session.user.id && session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Không có quyền chỉnh sửa sản phẩm này" }, { status: 403 })
+    }
+
+    const body = await request.json()
+    const data = partialUpdateSchema.parse(body)
+
+    // Build update payload — only include fields that are explicitly provided
+    const updateData: Record<string, unknown> = {}
+    if (data.title !== undefined) updateData.title = data.title
+    if (data.description !== undefined) updateData.description = data.description
+    if (data.condition !== undefined) updateData.condition = data.condition
+    if (data.ramGb !== undefined) updateData.ramGb = data.ramGb
+    if (data.storageGb !== undefined) updateData.storageGb = data.storageGb
+    if (data.color !== undefined) updateData.color = data.color
+    if (data.batteryHealth !== undefined) updateData.batteryHealth = data.batteryHealth
+    if (data.price !== undefined) updateData.price = data.price
+    if (data.negotiable !== undefined) updateData.negotiable = data.negotiable
+
+    // status: admin can change directly, owner changing to HIDDEN is fine
+    // owner changing from HIDDEN back to ACTIVE or any other status → needs re-approval
+    if (data.status !== undefined) {
+      updateData.status =
+        session.user.role === "ADMIN" ? data.status : data.status === "ACTIVE" ? "ACTIVE" : data.status
+    }
+
+    // Replace images if provided
+    if (data.images !== undefined) {
+      await prisma.productImage.deleteMany({ where: { productId: id } })
+      if (data.images.length > 0) {
+        await prisma.productImage.createMany({
+          data: data.images.map((url, index) => ({
+            productId: id,
+            url,
+            isPrimary: index === 0,
+            sortOrder: index,
+          })),
+        })
+      }
+    }
+
+    // Upsert healthCheck if provided
+    if (data.healthCheck !== undefined) {
+      await prisma.healthCheck.upsert({
+        where: { productId: id },
+        create: {
+          productId: id,
+          batteryHealth: data.healthCheck.batteryHealth ?? 100,
+          serialNumber: data.healthCheck.serialNumber ?? null,
+          wifiMacAddress: data.healthCheck.wifiMacAddress ?? null,
+          bluetoothMacAddress: data.healthCheck.bluetoothMacAddress ?? null,
+          iosVersion: data.healthCheck.iosVersion ?? null,
+          androidVersion: data.healthCheck.androidVersion ?? null,
+          activationStatus: data.healthCheck.activationStatus ?? null,
+          jailbreakStatus: data.healthCheck.jailbreakStatus ?? null,
+          securityLockStatus: data.healthCheck.securityLockStatus ?? null,
+          batteryCycleCount: data.healthCheck.batteryCycleCount ?? null,
+          screen: data.healthCheck.screen ?? "NOT_TESTED",
+          cameraFront: data.healthCheck.cameraFront ?? "NOT_TESTED",
+          cameraBack: data.healthCheck.cameraBack ?? "NOT_TESTED",
+          speaker: data.healthCheck.speaker ?? "NOT_TESTED",
+          microphone: data.healthCheck.microphone ?? "NOT_TESTED",
+          wifi: data.healthCheck.wifi ?? "NOT_TESTED",
+          bluetooth: data.healthCheck.bluetooth ?? "NOT_TESTED",
+          fingerprint: data.healthCheck.fingerprint ?? "NOT_TESTED",
+          faceId: data.healthCheck.faceId ?? "NOT_TESTED",
+          chargingPort: data.healthCheck.chargingPort ?? "NOT_TESTED",
+          overallStatus: data.healthCheck.overallStatus ?? null,
+          notes: data.healthCheck.notes ?? null,
+        },
+        update: {
+          batteryHealth: data.healthCheck.batteryHealth ?? 100,
+          serialNumber: data.healthCheck.serialNumber ?? null,
+          wifiMacAddress: data.healthCheck.wifiMacAddress ?? null,
+          bluetoothMacAddress: data.healthCheck.bluetoothMacAddress ?? null,
+          iosVersion: data.healthCheck.iosVersion ?? null,
+          androidVersion: data.healthCheck.androidVersion ?? null,
+          activationStatus: data.healthCheck.activationStatus ?? null,
+          jailbreakStatus: data.healthCheck.jailbreakStatus ?? null,
+          securityLockStatus: data.healthCheck.securityLockStatus ?? null,
+          batteryCycleCount: data.healthCheck.batteryCycleCount ?? null,
+          screen: data.healthCheck.screen ?? "NOT_TESTED",
+          cameraFront: data.healthCheck.cameraFront ?? "NOT_TESTED",
+          cameraBack: data.healthCheck.cameraBack ?? "NOT_TESTED",
+          speaker: data.healthCheck.speaker ?? "NOT_TESTED",
+          microphone: data.healthCheck.microphone ?? "NOT_TESTED",
+          wifi: data.healthCheck.wifi ?? "NOT_TESTED",
+          bluetooth: data.healthCheck.bluetooth ?? "NOT_TESTED",
+          fingerprint: data.healthCheck.fingerprint ?? "NOT_TESTED",
+          faceId: data.healthCheck.faceId ?? "NOT_TESTED",
+          chargingPort: data.healthCheck.chargingPort ?? "NOT_TESTED",
+          overallStatus: data.healthCheck.overallStatus ?? null,
+          notes: data.healthCheck.notes ?? null,
+        },
+      })
+    }
+
+    // Perform product update (only scalar fields)
+    const product = Object.keys(updateData).length > 0
+      ? await prisma.product.update({
+          where: { id },
+          data: updateData,
+          include: { brand: true, model: true, category: true, images: true, healthCheck: true },
+        })
+      : await prisma.product.findUnique({
+          where: { id },
+          include: { brand: true, model: true, category: true, images: true, healthCheck: true },
+        })
+
+    // Notify admin if non-admin edited (status reset to PENDING)
+    if (session.user.role !== "ADMIN" && (data.title || data.price || data.status)) {
+      const adminUsers = await prisma.user.findMany({ where: { role: "ADMIN" }, select: { id: true } })
+      for (const admin of adminUsers) {
+        await prisma.notification.create({
+          data: {
+            userId: admin.id,
+            type: "ORDER_UPDATED",
+            title: "Sản phẩm được cập nhật cần duyệt lại",
+            message: `Sản phẩm "${product?.title}" đã được chỉnh sửa và cần được duyệt lại.`,
+            relatedId: id,
+            relatedType: "PRODUCT",
+          },
+        })
+      }
+    }
+
+    return NextResponse.json({ product })
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: error.issues[0].message }, { status: 400 })
+    }
+    console.error("PATCH /api/products/[id] error:", error)
     return NextResponse.json({ error: "Lỗi server" }, { status: 500 })
   }
 }

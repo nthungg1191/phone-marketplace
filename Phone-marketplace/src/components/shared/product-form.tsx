@@ -1010,18 +1010,6 @@ export default function ProductForm({ product, onSubmit, isLoading }: ProductFor
                   {errors.price && <p className="text-sm text-red-500">{errors.price}</p>}
                 </div>
 
-                <div className="flex items-end">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="negotiable"
-                      checked={formData.negotiable}
-                      onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, negotiable: !!checked }))}
-                    />
-                    <Label htmlFor="negotiable" className="cursor-pointer">
-                      Cho phép thương lượng giá
-                    </Label>
-                  </div>
-                </div>
               </div>
             </CardContent>
           </Card>

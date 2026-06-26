@@ -170,17 +170,70 @@ export default function EditProductPage() {
 
     setIsLoading(true)
     try {
+      // Transform form data to match API schema
+      const apiPayload: Record<string, unknown> = {
+        brandId: data.brandId,
+        modelId: data.modelId,
+        categoryId: data.categoryId,
+        title: data.title,
+        description: data.description,
+        condition: data.condition,
+        ramGb: data.ramGb,
+        storageGb: data.storageGb,
+        color: data.color,
+        batteryHealth: data.batteryHealth,
+        price: typeof data.price === "string" ? parseInt(data.price) : data.price,
+        negotiable: data.negotiable,
+        // Transform images: [{url, isPrimary}] -> string[]
+        images: (data.images ?? []).map((img) =>
+          typeof img === "string" ? img : img.url
+        ),
+        // Transform healthCheck: map form's 29 fields to API's 11 fields
+        healthCheck: data.healthCheck
+          ? {
+              serialNumber: data.healthCheck.serialNumber,
+              wifiMacAddress: data.healthCheck.wifiMacAddress,
+              bluetoothMacAddress: data.healthCheck.bluetoothMacAddress,
+              iosVersion: data.healthCheck.iosVersion,
+              androidVersion: data.healthCheck.iosVersion ? undefined : undefined,
+              activationStatus: data.healthCheck.activationStatus,
+              jailbreakStatus: data.healthCheck.jailbreakStatus,
+              securityLockStatus: data.healthCheck.jailbreakStatus ? undefined : undefined,
+              batteryCycleCount: data.healthCheck.batteryCycleCount,
+              batteryHealth: data.healthCheck.batteryHealth,
+              screen: data.healthCheck.screen as "PASS" | "FAIL" | "NOT_TESTED",
+              cameraFront: data.healthCheck.cameraFront as "PASS" | "FAIL" | "NOT_TESTED",
+              cameraBack: data.healthCheck.cameraBack as "PASS" | "FAIL" | "NOT_TESTED",
+              speaker: data.healthCheck.speaker as "PASS" | "FAIL" | "NOT_TESTED",
+              microphone: data.healthCheck.microphone as "PASS" | "FAIL" | "NOT_TESTED",
+              wifi: data.healthCheck.wifi as "PASS" | "FAIL" | "NOT_TESTED",
+              bluetooth: data.healthCheck.bluetooth as "PASS" | "FAIL" | "NOT_TESTED",
+              fingerprint: data.healthCheck.fingerprint as "PASS" | "FAIL" | "NOT_TESTED",
+              faceId: data.healthCheck.faceId as "PASS" | "FAIL" | "NOT_TESTED",
+              chargingPort: data.healthCheck.chargingPort as "PASS" | "FAIL" | "NOT_TESTED",
+              overallStatus: data.healthCheck.overallStatus,
+              notes: data.healthCheck.notes,
+            }
+          : undefined,
+      }
+
       const res = await fetch(`/api/products/${product.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(apiPayload),
       })
 
       if (res.ok) {
         router.push("/seller/products")
       } else {
-        const error = await res.json()
-        throw new Error(error.error || "Có lỗi xảy ra")
+        let message = "Có lỗi xảy ra"
+        try {
+          const body = await res.json()
+          message = body?.error || message
+        } catch {
+          // Response had no JSON body
+        }
+        throw new Error(message)
       }
     } catch (error) {
       alert(error instanceof Error ? error.message : "Có lỗi xảy ra, vui lòng thử lại")
